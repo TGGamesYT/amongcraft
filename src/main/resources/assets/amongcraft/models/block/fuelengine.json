@@ -1,0 +1,57 @@
+{
+	"format_version": "1.21.6",
+	"credit": "Made with Blockbench",
+	"texture_size": [8, 8],
+	"textures": {
+		"0": "amongcraft:block/fuelengine",
+		"1": "amongcraft:block/fuel_button",
+		"particle": "amongcraft:block/fuelengine"
+	},
+	"elements": [
+		{
+			"from": [3, 1, 11],
+			"to": [15, 15, 12],
+			"rotation": {"angle": 22.5, "axis": "x", "origin": [0, 0, 10]},
+			"faces": {
+				"north": {"uv": [0, 0, 7, 7], "texture": "#0"},
+				"east": {"uv": [7, 0, 7.5, 7], "texture": "#0"},
+				"south": {"uv": [0, 7, 7, 14], "texture": "#0"},
+				"west": {"uv": [7, 7, 7.5, 14], "texture": "#0"},
+				"up": {"uv": [14.5, 0.5, 7.5, 0], "texture": "#0"},
+				"down": {"uv": [14.5, 0.5, 7.5, 1], "texture": "#0"}
+			}
+		},
+		{
+			"from": [0, 2, 12],
+			"to": [3, 4, 13],
+			"rotation": {"angle": 22.5, "axis": "x", "origin": [0, 2, 12]},
+			"faces": {
+				"north": {"uv": [0, 0, 6, 4], "texture": "#1"},
+				"east": {"uv": [6, 4, 8, 8], "texture": "#1"},
+				"south": {"uv": [0, 4, 6, 8], "texture": "#1"},
+				"west": {"uv": [0, 8, 2, 12], "texture": "#1"},
+				"up": {"uv": [12, 2, 6, 0], "texture": "#1"},
+				"down": {"uv": [12, 2, 6, 4], "texture": "#1"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"translation": [0, 0, -7.5]
+		},
+		"thirdperson_lefthand": {
+			"translation": [0, 0, -7.5]
+		},
+		"ground": {
+			"rotation": [90, 0, 0],
+			"translation": [0, 4.25, 0]
+		},
+		"head": {
+			"translation": [0, 0, -14.25]
+		},
+		"fixed": {
+			"translation": [0, 0, -7],
+			"scale": [1.4, 1.4, 1]
+		}
+	}
+}

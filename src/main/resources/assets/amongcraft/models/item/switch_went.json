@@ -1,0 +1,14 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "amongcraft:item/switch_went"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "scale": [0.0, 0.0, 0.0]
+    },
+    "thirdperson_lefthand": {
+      "scale": [0.0, 0.0, 0.0]
+    }
+  }
+}

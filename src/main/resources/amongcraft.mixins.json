@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.tg.amongcraft.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "PlayerListS2CPacketAccessor",
+    "PlayerManagerMixin",
+    "ServerPlayerInteractionManagerMixin",
+    "ServerPlayNetworkHandlerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

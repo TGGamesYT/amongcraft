@@ -1,0 +1,23 @@
+{
+  "variants": {
+    "task=o2,facing=north":  { "model": "amongcraft:block/o2", "y": 180 },
+    "task=o2,facing=east":   { "model": "amongcraft:block/o2", "y": 270 },
+    "task=o2,facing=south":  { "model": "amongcraft:block/o2", "y": 0 },
+    "task=o2,facing=west":   { "model": "amongcraft:block/o2", "y": 90 },
+
+    "task=reactor,facing=north":  { "model": "amongcraft:block/reactor", "y": 180 },
+    "task=reactor,facing=east":   { "model": "amongcraft:block/reactor", "y": 270 },
+    "task=reactor,facing=south":  { "model": "amongcraft:block/reactor", "y": 0 },
+    "task=reactor,facing=west":   { "model": "amongcraft:block/reactor", "y": 90 },
+
+    "task=comms,facing=north":  { "model": "amongcraft:block/comms", "y": 180 },
+    "task=comms,facing=east":   { "model": "amongcraft:block/comms", "y": 270 },
+    "task=comms,facing=south":  { "model": "amongcraft:block/comms", "y": 0 },
+    "task=comms,facing=west":   { "model": "amongcraft:block/comms", "y": 90 },
+
+    "task=lights,facing=north":  { "model": "amongcraft:block/lights", "y": 180 },
+    "task=lights,facing=east":   { "model": "amongcraft:block/lights", "y": 270 },
+    "task=lights,facing=south":  { "model": "amongcraft:block/lights", "y": 0 },
+    "task=lights,facing=west":   { "model": "amongcraft:block/lights", "y": 90 }
+  }
+}

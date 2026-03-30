@@ -1,0 +1,82 @@
+{
+  "ui.click": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:ui/click", "stream": false }]
+  },
+  "ui.hover": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:ui/hover", "stream": false }]
+  },
+  "sus.imp_kill": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/imp_kill", "stream": false }]
+  },
+  "sus.imp_kill_crew": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/imp_kill_crew", "stream": false }]
+  },
+  "sus.meeting": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/meeting", "stream": false }]
+  },
+  "sus.music_menu": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/music_menu", "stream": false }]
+  },
+  "sus.music_skeld_theme": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/music_skeld_theme", "stream": false }]
+  },
+  "sus.report": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/report", "stream": false }]
+  },
+  "sus.role_crew": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_crewmate", "stream": false }]
+  },
+  "sus.role_engineer": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_engineer", "stream": false }]
+  },
+  "sus.role_impostor": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_impostor", "stream": false }]
+  },
+  "sus.role_noisemaker": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_noisemaker", "stream": false }]
+  },
+  "sus.role_phantom": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_phantom", "stream": false }]
+  },
+  "sus.role_scientist": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_scientist", "stream": false }]
+  },
+  "sus.role_shapeshifter": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/role_shapeshifter", "stream": false }]
+  },
+  "sus.spawn": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/spawn", "stream": false }]
+  },
+  "sus.start": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/start", "stream": false }]
+  },
+  "sus.start_countdown": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/start_countdown", "stream": false }]
+  },
+  "sus.victory_crew": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/victory_crew", "stream": false }]
+  },
+  "sus.victory_imp": {
+    "category": "master",
+    "sounds": [{ "name": "amongcraft:sus/victory_imp", "stream": false }]
+  }
+}

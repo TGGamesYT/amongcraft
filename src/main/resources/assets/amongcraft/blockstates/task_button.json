@@ -1,0 +1,118 @@
+{
+  "variants": {
+    "task=default,facing=north": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=default,facing=south": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=default,facing=west":  { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=default,facing=east":  { "model": "amongcraft:block/task_button", "y": 0 },
+
+    "task=upload,facing=north": { "model": "amongcraft:block/upload", "y": 180 },
+    "task=upload,facing=south": { "model": "amongcraft:block/upload", "y": 0 },
+    "task=upload,facing=west":  { "model": "amongcraft:block/upload", "y": 90 },
+    "task=upload,facing=east":  { "model": "amongcraft:block/upload", "y": 270 },
+
+    "task=download,facing=north": { "model": "amongcraft:block/upload", "y": 180 },
+    "task=download,facing=south": { "model": "amongcraft:block/upload", "y": 0 },
+    "task=download,facing=west":  { "model": "amongcraft:block/upload", "y": 90 },
+    "task=download,facing=east":  { "model": "amongcraft:block/upload", "y": 270 },
+
+    "task=scan,facing=north": { "model": "amongcraft:block/scan", "y": 0 },
+    "task=scan,facing=south": { "model": "amongcraft:block/scan", "y": 0 },
+    "task=scan,facing=west":  { "model": "amongcraft:block/scan", "y": 0 },
+    "task=scan,facing=east":  { "model": "amongcraft:block/scan", "y": 0 },
+
+    "task=wiring,facing=north": { "model": "amongcraft:block/wiring", "y": 180 },
+    "task=wiring,facing=south": { "model": "amongcraft:block/wiring", "y": 0 },
+    "task=wiring,facing=west":  { "model": "amongcraft:block/wiring", "y": 90 },
+    "task=wiring,facing=east":  { "model": "amongcraft:block/wiring", "y": 270 },
+
+    "task=align_engine_output,facing=north": { "model": "amongcraft:block/engine", "y": 180 },
+    "task=align_engine_output,facing=south": { "model": "amongcraft:block/engine", "y": 0 },
+    "task=align_engine_output,facing=west":  { "model": "amongcraft:block/engine", "y": 90 },
+    "task=align_engine_output,facing=east":  { "model": "amongcraft:block/engine", "y": 270 },
+
+    "task=calibrate,facing=north": { "model": "amongcraft:block/calibrate", "y": 180 },
+    "task=calibrate,facing=south": { "model": "amongcraft:block/calibrate", "y": 0 },
+    "task=calibrate,facing=west":  { "model": "amongcraft:block/calibrate", "y": 90 },
+    "task=calibrate,facing=east":  { "model": "amongcraft:block/calibrate", "y": 270 },
+
+    "task=chart_course,facing=north": { "model": "amongcraft:block/course", "y": 180 },
+    "task=chart_course,facing=south": { "model": "amongcraft:block/course", "y": 0 },
+    "task=chart_course,facing=west":  { "model": "amongcraft:block/course", "y": 90 },
+    "task=chart_course,facing=east":  { "model": "amongcraft:block/course", "y": 270 },
+
+    "task=chute,facing=north": { "model": "amongcraft:block/chute", "y": 180 },
+    "task=chute,facing=south": { "model": "amongcraft:block/chute", "y": 0 },
+    "task=chute,facing=west":  { "model": "amongcraft:block/chute", "y": 90 },
+    "task=chute,facing=east":  { "model": "amongcraft:block/chute", "y": 270 },
+
+    "task=clear_asteroids,facing=north": { "model": "amongcraft:block/asteroids", "y": 180 },
+    "task=clear_asteroids,facing=south": { "model": "amongcraft:block/asteroids", "y": 0 },
+    "task=clear_asteroids,facing=west":  { "model": "amongcraft:block/asteroids", "y": 90 },
+    "task=clear_asteroids,facing=east":  { "model": "amongcraft:block/asteroids", "y": 270 },
+
+    "task=divert_power_1,facing=north": { "model": "amongcraft:block/divert", "y": 180 },
+    "task=divert_power_1,facing=south": { "model": "amongcraft:block/divert", "y": 0 },
+    "task=divert_power_1,facing=west":  { "model": "amongcraft:block/divert", "y": 90 },
+    "task=divert_power_1,facing=east":  { "model": "amongcraft:block/divert", "y": 270 },
+
+    "task=divert_power_2,facing=north": { "model": "amongcraft:block/divert", "y": 180 },
+    "task=divert_power_2,facing=south": { "model": "amongcraft:block/divert", "y": 0 },
+    "task=divert_power_2,facing=west":  { "model": "amongcraft:block/divert", "y": 90 },
+    "task=divert_power_2,facing=east":  { "model": "amongcraft:block/divert", "y": 270 },
+
+    "task=fuelcan,facing=north": { "model": "amongcraft:block/fuelcan", "y": 180 },
+    "task=fuelcan,facing=south": { "model": "amongcraft:block/fuelcan", "y": 0 },
+    "task=fuelcan,facing=west":  { "model": "amongcraft:block/fuelcan", "y": 90 },
+    "task=fuelcan,facing=east":  { "model": "amongcraft:block/fuelcan", "y": 270 },
+
+    "task=fuelengine,facing=north": { "model": "amongcraft:block/fuelengine", "y": 180 },
+    "task=fuelengine,facing=south": { "model": "amongcraft:block/fuelengine", "y": 0 },
+    "task=fuelengine,facing=west":  { "model": "amongcraft:block/fuelengine", "y": 90 },
+    "task=fuelengine,facing=east":  { "model": "amongcraft:block/fuelengine", "y": 270 },
+
+    "task=inspect_sample,facing=north": { "model": "amongcraft:block/sample", "y": 180 },
+    "task=inspect_sample,facing=south": { "model": "amongcraft:block/sample", "y": 0 },
+    "task=inspect_sample,facing=west":  { "model": "amongcraft:block/sample", "y": 90 },
+    "task=inspect_sample,facing=east":  { "model": "amongcraft:block/sample", "y": 270 },
+
+    "task=o2_filter,facing=north": { "model": "amongcraft:block/o2_filter", "y": 180 },
+    "task=o2_filter,facing=south": { "model": "amongcraft:block/o2_filter", "y": 0 },
+    "task=o2_filter,facing=west":  { "model": "amongcraft:block/o2_filter", "y": 90 },
+    "task=o2_filter,facing=east":  { "model": "amongcraft:block/o2_filter", "y": 270 },
+
+    "task=shields,facing=north": { "model": "amongcraft:block/shields", "y": 180 },
+    "task=shields,facing=south": { "model": "amongcraft:block/shields", "y": 0 },
+    "task=shields,facing=west":  { "model": "amongcraft:block/shields", "y": 90 },
+    "task=shields,facing=east":  { "model": "amongcraft:block/shields", "y": 270 },
+
+    "task=start_reactor,facing=north": { "model": "amongcraft:block/start_reactor", "y": 180 },
+    "task=start_reactor,facing=south": { "model": "amongcraft:block/start_reactor", "y": 0 },
+    "task=start_reactor,facing=west":  { "model": "amongcraft:block/start_reactor", "y": 90 },
+    "task=start_reactor,facing=east":  { "model": "amongcraft:block/start_reactor", "y": 270 },
+
+    "task=stabilize_steering,facing=north": { "model": "amongcraft:block/steering", "y": 180 },
+    "task=stabilize_steering,facing=south": { "model": "amongcraft:block/steering", "y": 0 },
+    "task=stabilize_steering,facing=west":  { "model": "amongcraft:block/steering", "y": 90 },
+    "task=stabilize_steering,facing=east":  { "model": "amongcraft:block/steering", "y": 270 },
+
+    "task=swipe_card,facing=north": { "model": "amongcraft:block/swipe_card", "y": 180 },
+    "task=swipe_card,facing=south": { "model": "amongcraft:block/swipe_card", "y": 0 },
+    "task=swipe_card,facing=west":  { "model": "amongcraft:block/swipe_card", "y": 90 },
+    "task=swipe_card,facing=east":  { "model": "amongcraft:block/swipe_card", "y": 270 },
+
+    "task=unlock_manifolds,facing=north": { "model": "amongcraft:block/manifolds", "y": 180 },
+    "task=unlock_manifolds,facing=south": { "model": "amongcraft:block/manifolds", "y": 0 },
+    "task=unlock_manifolds,facing=west":  { "model": "amongcraft:block/manifolds", "y": 90 },
+    "task=unlock_manifolds,facing=east":  { "model": "amongcraft:block/manifolds", "y": 270 },
+
+    "task=task1,facing=north": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task1,facing=south": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task1,facing=west":  { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task1,facing=east":  { "model": "amongcraft:block/task_button", "y": 0 },
+
+    "task=task2,facing=north": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task2,facing=south": { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task2,facing=west":  { "model": "amongcraft:block/task_button", "y": 0 },
+    "task=task2,facing=east":  { "model": "amongcraft:block/task_button", "y": 0 }
+  }
+}

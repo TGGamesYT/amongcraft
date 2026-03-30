@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "amongcraft:block/start_button", "y": 180 },
+    "facing=south": { "model": "amongcraft:block/start_button", "y": 0 },
+    "facing=west":  { "model": "amongcraft:block/start_button", "y": 90 },
+    "facing=east":  { "model": "amongcraft:block/start_button", "y": 270 }
+  }
+}

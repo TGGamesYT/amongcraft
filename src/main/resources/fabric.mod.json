@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "amongcraft",
+  "version": "${version}",
+  "name": "AmongCraft",
+  "description": "Among Us in Minecraft",
+  "authors": ["TGGamesYT"],
+  "contact": {
+    "website": "https://tg.is-a.dev",
+    "source": "https://github.com/tggamesyt/amongcraft",
+    "issues": "https://github.com/tggamesyt/amongcraft/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/amongcraft/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "me.tg.amongcraft.client.AmongcraftDataGenerator"
+    ],
+    "client": [
+      "me.tg.amongcraft.client.AmongcraftClient"
+    ],
+    "main": [
+      "me.tg.amongcraft.Amongcraft"
+    ]
+  },
+  "mixins": [
+    "amongcraft.mixins.json",
+    {
+      "config": "amongcraft.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  },
+  "custom": {
+    "fabric-networking-v1:required": true
+  },
+  "modmenu": {
+    "links": {
+      "modmenu.discord": "https://discord.gg/8v6NvACFX5"
+    },
+    "parent": {
+      "id": "amongcraft",
+      "name": "AmongCraft",
+      "description": "Among Us in Minecraft",
+      "icon": "assets/amongcraft/icon.png"
+    },
+    "update_checker": true
+  }
+}

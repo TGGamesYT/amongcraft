@@ -1,0 +1,16 @@
+{
+  "impostor-percentage": 25,
+  "task-updates": "instant",
+  "player-overlay": true,
+  "anonim-votes": false,
+  "meeting-per-player": -1,
+  "meeting-discussion": 30,
+  "meeting-voting": 60,
+  "kill-cooldown": 30,
+  "went-cooldown": 10,
+  "doors": [
+    { "start": "0;0;0", "end": "1;1;1" },
+    { "start": "2;2;2", "end": "3;3;3" }
+  ],
+  "door-filler": "minecraft:iron_block"
+}
