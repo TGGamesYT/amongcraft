@@ -168,6 +168,10 @@ public class SettingsManager {
 
 
     public static void save(JsonObject newSettings) {
+        File parent = CONFIG_FILE.getParentFile();
+        if (parent != null) {
+            parent.mkdirs();
+        }
         try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(newSettings, writer);
             settings = newSettings.deepCopy();

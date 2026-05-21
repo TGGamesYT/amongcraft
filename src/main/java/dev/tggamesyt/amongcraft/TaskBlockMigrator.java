@@ -4,36 +4,46 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.WorldChunk;
 
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 /**
- * Auto-migrates legacy {@code amongcraft:task_button} blocks (the old
- * single blockstate-driven block) into the new per-task blocks.
+ * Auto-migrates legacy {@code amongcraft:task_button} blocks to the new
+ * per-task blocks.
  *
- * On every chunk load it reads {@code amongcraft/taskblocks.json} for that
- * world and, for each saved task position that falls inside the loaded chunk,
- * replaces a {@link LegacyTaskBlock} found there with the matching per-task
- * {@link Amongcraft.TaskBlock}, preserving the facing.
- *
- * This is cheap: it only inspects the known task positions, not every block.
+ * <p>Block edits are deliberately NOT performed inside the chunk-load
+ * callback: calling {@code setBlockState} while a chunk is still loading can
+ * deadlock world loading (a neighbour update can trigger synchronous loading
+ * of an adjacent chunk). Instead, candidate positions are queued during chunk
+ * load and converted a few at a time on the normal server tick, when the
+ * world is safe to modify.</p>
  */
 public final class TaskBlockMigrator {
+
+    private record Pending(ServerWorld world, BlockPos pos) {}
+
+    private static final Queue<Pending> QUEUE = new ArrayDeque<>();
+    private static final int PER_TICK = 64;
 
     private TaskBlockMigrator() {}
 
     public static void register() {
         ServerChunkEvents.CHUNK_LOAD.register(TaskBlockMigrator::onChunkLoad);
+        ServerTickEvents.END_SERVER_TICK.register(TaskBlockMigrator::onTick);
     }
 
     private static void onChunkLoad(ServerWorld world, WorldChunk chunk) {
@@ -50,45 +60,60 @@ public final class TaskBlockMigrator {
                 json = parsed.getAsJsonObject();
             }
 
-            ChunkPos chunkPos = chunk.getPos();
-            int minX = chunkPos.getStartX();
-            int maxX = chunkPos.getEndX();
-            int minZ = chunkPos.getStartZ();
-            int maxZ = chunkPos.getEndZ();
+            ChunkPos cp = chunk.getPos();
+            int minX = cp.getStartX();
+            int maxX = cp.getEndX();
+            int minZ = cp.getStartZ();
+            int maxZ = cp.getEndZ();
 
-            for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
-                String[] coords = entry.getKey().split(",");
-                if (coords.length != 3) continue;
-
+            for (String key : json.keySet()) {
+                String[] c = key.split(",");
+                if (c.length != 3) continue;
                 int x;
                 int y;
                 int z;
                 try {
-                    x = Integer.parseInt(coords[0].trim());
-                    y = Integer.parseInt(coords[1].trim());
-                    z = Integer.parseInt(coords[2].trim());
+                    x = Integer.parseInt(c[0].trim());
+                    y = Integer.parseInt(c[1].trim());
+                    z = Integer.parseInt(c[2].trim());
                 } catch (NumberFormatException e) {
                     continue;
                 }
-
-                // Only touch positions inside this chunk.
                 if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-
-                BlockPos pos = new BlockPos(x, y, z);
-                BlockState state = world.getBlockState(pos);
-                if (!(state.getBlock() instanceof LegacyTaskBlock)) continue;
-
-                Amongcraft.TaskBlock.TaskType type = state.get(LegacyTaskBlock.TASK);
-                net.minecraft.util.math.Direction facing = state.get(LegacyTaskBlock.FACING);
-
-                Block newBlock = Amongcraft.taskBlock(type);
-                if (newBlock == null) continue;
-
-                world.setBlockState(pos, newBlock.getDefaultState()
-                        .with(Amongcraft.TaskBlock.FACING, facing));
+                synchronized (QUEUE) {
+                    QUEUE.add(new Pending(world, new BlockPos(x, y, z)));
+                }
             }
         } catch (Exception e) {
-            Amongcraft.LOGGER.warn("Task block migration failed for chunk: {}", e.toString());
+            Amongcraft.LOGGER.warn("Task block migration scan failed: {}", e.toString());
         }
+    }
+
+    private static void onTick(MinecraftServer server) {
+        for (int i = 0; i < PER_TICK; i++) {
+            Pending p;
+            synchronized (QUEUE) {
+                p = QUEUE.poll();
+            }
+            if (p == null) return;
+            try {
+                migrate(p.world(), p.pos());
+            } catch (Exception e) {
+                Amongcraft.LOGGER.warn("Task block migration failed at {}: {}", p.pos(), e.toString());
+            }
+        }
+    }
+
+    private static void migrate(ServerWorld world, BlockPos pos) {
+        BlockState state = world.getBlockState(pos);
+        if (!(state.getBlock() instanceof LegacyTaskBlock)) return;
+
+        Amongcraft.TaskBlock.TaskType type = state.get(LegacyTaskBlock.TASK);
+        Direction facing = state.get(LegacyTaskBlock.FACING);
+        Block newBlock = Amongcraft.taskBlock(type);
+        if (newBlock == null) return;
+
+        world.setBlockState(pos, newBlock.getDefaultState()
+                .with(Amongcraft.TaskBlock.FACING, facing), Block.NOTIFY_LISTENERS);
     }
 }

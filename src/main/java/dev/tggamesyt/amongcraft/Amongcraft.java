@@ -684,6 +684,22 @@ public class Amongcraft implements ModInitializer {
             }
 
             @Override
+            public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+                if (!world.isClient && !state.isOf(newState.getBlock()) && world instanceof ServerWorld serverWorld) {
+                    net.minecraft.util.math.Box box = new net.minecraft.util.math.Box(
+                            pos.getX(), pos.getY(), pos.getZ(),
+                            pos.getX() + 1, pos.getY() + 2.5, pos.getZ() + 1);
+                    for (ArmorStandEntity tag : serverWorld.getEntitiesByClass(ArmorStandEntity.class, box, stand -> {
+                        Text name = stand.getCustomName();
+                        return name != null && name.getString().contains("Task:");
+                    })) {
+                        tag.discard();
+                    }
+                }
+                super.onStateReplaced(state, world, pos, newState, moved);
+            }
+
+            @Override
             public void onPlaced(World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack) {
                 super.onPlaced(world, pos, state, placer, itemStack);
 
