@@ -15,13 +15,13 @@
   "environment": "*",
   "entrypoints": {
     "fabric-datagen": [
-      "me.tg.amongcraft.client.AmongcraftDataGenerator"
+      "dev.tggamesyt.amongcraft.client.AmongcraftDataGenerator"
     ],
     "client": [
-      "me.tg.amongcraft.client.AmongcraftClient"
+      "dev.tggamesyt.amongcraft.client.AmongcraftClient"
     ],
     "main": [
-      "me.tg.amongcraft.Amongcraft"
+      "dev.tggamesyt.amongcraft.Amongcraft"
     ]
   },
   "mixins": [

@@ -8,7 +8,7 @@
 ## Project overview
 - Minecraft **Fabric** mod for **Minecraft 1.20.1** (Yarn mappings).
 - Goal: recreate **Among Us** inside Minecraft (roles, tasks, meetings, sabotage, ejections).
-- Maven group `me.tg`, mod id `amongcraft`.
+- Maven group `dev.tggamesyt`, mod id `amongcraft`.
 - Source split into `src/main` (common/server) and `src/client` (client-only).
 
 ## Build

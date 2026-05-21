@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "me.tg.amongcraft.mixin",
+  "package": "dev.tggamesyt.amongcraft.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "PlayerListS2CPacketAccessor",
