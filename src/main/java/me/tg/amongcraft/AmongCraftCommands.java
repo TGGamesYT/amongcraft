@@ -60,6 +60,14 @@ public class AmongCraftCommands {
         playerRoles.put(uuid, roleName);
     }
 
+    /** Clears every per-game role/team set so a fresh game starts clean. */
+    public static void resetRoles() {
+        impostors.clear();
+        crewmates.clear();
+        dead.clear();
+        playerRoles.clear();
+    }
+
     public static String getPlayerRole(UUID uuid) {
         return playerRoles.getOrDefault(uuid, "Unknown");
     }

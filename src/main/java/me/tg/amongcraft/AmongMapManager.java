@@ -127,17 +127,30 @@ public class AmongMapManager {
         try {
             if (!GameState.isRunning()) {
                 JsonObject allRoles = SettingsManager.get("Roles").getAsJsonObject();
+
+                MinecraftServer server = ctx.getSource().getServer();
+                ServerWorld world = ctx.getSource().getWorld();
+
+                // Validate the map BEFORE mutating any state, so a failed start
+                // leaves everything clean.
+                List<BlockPos> spawnPoints = getAllMatchingSpawns(world, AmongMapManager.MAP_SPAWN_BLOCK, map);
+                if (spawnPoints.isEmpty()) {
+                    ctx.getSource().sendFeedback(() -> Text.literal("§cNo spawns for map: " + map), false);
+                    return 0;
+                }
+
+                // --- Reset all stale game state from any previous game ---
+                AmongCraftCommands.resetRoles();
+                AmongCraftCommands.resetSpectatorTabList(server);
                 MeetingManager.resetMeetingData();
                 TaskProgressTracker.resetProgress();
                 TaskProgressTracker.currentMap = map;
 
-                MinecraftServer server = ctx.getSource().getServer();
-                ServerWorld world = ctx.getSource().getWorld();
-                List<ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
-
-                List<BlockPos> spawnPoints = getAllMatchingSpawns(world, AmongMapManager.MAP_SPAWN_BLOCK, map);
-                if (spawnPoints.isEmpty()) {
-                    ctx.getSource().sendFeedback(() -> Text.literal("§cNo spawns for map: " + map), false);
+                // Take a stable, mutable snapshot of the current players. The
+                // PlayerManager list is live, so it must be copied before shuffling.
+                List<ServerPlayerEntity> players = new ArrayList<>(server.getPlayerManager().getPlayerList());
+                if (players.isEmpty()) {
+                    ctx.getSource().sendFeedback(() -> Text.literal("§cNo players online to start a game."), false);
                     return 0;
                 }
 
@@ -149,8 +162,16 @@ public class AmongMapManager {
                 }
 
                 Collections.shuffle(players);
+                // Impostor count is capped so there is always at least one crewmate.
                 int impostorCount = Math.max(1, players.size() * AmongCraftCommands.getImpostorPercentage() / 100);
-                Collections.shuffle(players);
+                impostorCount = Math.min(impostorCount, Math.max(1, players.size() - 1));
+
+                // Wipe inventories and any leftover effects before handing out
+                // role items, so nothing carries over from a previous game.
+                for (ServerPlayerEntity player : players) {
+                    player.getInventory().clear();
+                    player.clearStatusEffects();
+                }
 
                 for (int i = 0; i < players.size(); i++) {
                     ServerPlayerEntity p = players.get(i);
@@ -158,12 +179,19 @@ public class AmongMapManager {
                     else setPlayerCrewmate(p);
                 }
 
+                int killCooldownTicks = SettingsManager.get("kill-cooldown").getAsInt() * 20;
                 for (ServerPlayerEntity player : players) {
                     TaskProgressTracker.createTaskMapForCurrentMap(player, 1);
                     player.changeGameMode(GameMode.SURVIVAL);
                     if (crewmates.contains(player.getUuid())) {
                         StatusEffectInstance weakness = new StatusEffectInstance(StatusEffects.WEAKNESS, 20 * 60 * 60 * 100, 254, false, false, false);
                         player.addStatusEffect(weakness);
+                    } else if (impostors.contains(player.getUuid())) {
+                        // Impostors start on kill cooldown so they cannot kill instantly.
+                        player.addStatusEffect(new StatusEffectInstance(
+                                StatusEffects.WEAKNESS, killCooldownTicks, 255, false, false, false));
+                        ItemStack knife = new ItemStack(Amongcraft.KILLER_KNIFE);
+                        player.getItemCooldownManager().set(knife.getItem(), killCooldownTicks);
                     }
                 }
 
