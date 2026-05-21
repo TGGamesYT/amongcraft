@@ -76,13 +76,17 @@ public class AmongcraftClient implements ClientModInitializer {
             }
         });
         EntityRendererRegistry.register(Amongcraft.CORPSE_ENTITY_TYPE, DeadBodyEntityRenderer::new);
-        ClientPlayNetworking.registerGlobalReceiver(Amongcraft.OPEN_BROWSER_PACKET_ID, (client, handler, buf, responseSender) -> {
-            String url = buf.readString();
+        ClientPlayNetworking.registerGlobalReceiver(Amongcraft.OPEN_TASK_PACKET_ID, (client, handler, buf, responseSender) -> {
+            String taskName = buf.readString();
             BlockPos pos = buf.readBlockPos();
             client.execute(() -> {
-                Screen browser = new TaskBrowserScreen(url, pos);
-                MinecraftClient.getInstance().setScreen(browser);
-                Amongcraft.LOGGER.info("Recieved Packet!");
+                me.tg.amongcraft.client.tasks.TaskMinigameScreen screen =
+                        me.tg.amongcraft.client.tasks.TaskScreens.create(taskName, pos);
+                if (screen != null) {
+                    MinecraftClient.getInstance().setScreen(screen);
+                } else {
+                    Amongcraft.LOGGER.warn("No native task screen for task: " + taskName);
+                }
             });
         });
         TaskDoneC2SPacket.register();

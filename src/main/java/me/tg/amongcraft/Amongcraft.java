@@ -70,7 +70,6 @@ import static me.tg.amongcraft.AmongCraftCommands.getPlayerRole;
 import static me.tg.amongcraft.AmongCraftCommands.impostors;
 import static me.tg.amongcraft.MeetingManager.handleVote;
 import static me.tg.amongcraft.SabotageTaskBlock.generateRandomLightState;
-import static me.tg.amongcraft.TaskPacket.sendTaskOpenPacket;
 import static me.tg.amongcraft.TaskProgressTracker.*;
 
 
@@ -142,7 +141,7 @@ public class Amongcraft implements ModInitializer {
                 entries.add(Amongcraft.TASKORDERITEM);
             })
             .build();
-    public static final Identifier OPEN_BROWSER_PACKET_ID = new Identifier(MODID, "open_browser");
+    public static final Identifier OPEN_TASK_PACKET_ID = new Identifier(MODID, "open_task");
 
     public static final Item SWITCH_WENT = new SwitchWentItem();
         public static final Item SETTINGS_ITEM = new CommandItem("/amongcraft settings");
@@ -200,6 +199,14 @@ public class Amongcraft implements ModInitializer {
             register(name, new BlockItem(block, settings));
         }
 
+        /** Tells the given player's client to open the native minigame screen for {@code taskName}. */
+        public static void openTask(ServerPlayerEntity player, String taskName, BlockPos pos) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeString(taskName);
+            buf.writeBlockPos(pos);
+            ServerPlayNetworking.send(player, OPEN_TASK_PACKET_ID, buf);
+        }
+
         @Override
         public void onInitialize() {
             register("start_button", START_BUTTON_BLOCK, new FabricItemSettings());
@@ -240,7 +247,6 @@ public class Amongcraft implements ModInitializer {
             SettingsManager.load();
             AmongCraftPackets.register();
             AmongMapManager.register();
-            TaskPacket.init();
             MeetingManager.register();
             DeathListener.register();
             TaskBlockMigrator.register();
@@ -667,6 +673,14 @@ public class Amongcraft implements ModInitializer {
 
             public TaskType getTaskType() {
                 return taskType;
+            }
+
+            @Override
+            public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+                if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer) {
+                    openTask(serverPlayer, this.taskType.asString(), pos);
+                }
+                return ActionResult.SUCCESS;
             }
 
             @Override
@@ -1554,7 +1568,7 @@ public class Amongcraft implements ModInitializer {
                         return ActionResult.FAIL;
                     }
 
-                sendTaskOpenPacket(serverPlayer, taskId, pos);
+                openTask(serverPlayer, taskId, pos);
 
                 return ActionResult.SUCCESS;
             }
