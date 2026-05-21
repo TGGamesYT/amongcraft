@@ -87,33 +87,35 @@ public class AmongcraftClient implements ClientModInitializer {
         });
         TaskDoneC2SPacket.register();
         ClientPlayNetworking.registerGlobalReceiver(Amongcraft.MEETING_PHASE_PACKET, (client, handler, buf, responseSender) -> {
-            EmergencyMeetingScreen.Phase phase = buf.readEnumConstant(EmergencyMeetingScreen.Phase.class);
+            String phaseName = buf.readString();
             int secondsLeft = buf.readInt();
 
             client.execute(() -> {
                 if (client.currentScreen instanceof EmergencyMeetingScreen screen) {
-                    screen.setPhase(phase, secondsLeft);
+                    try {
+                        screen.setPhase(EmergencyMeetingScreen.Phase.valueOf(phaseName), secondsLeft);
+                    } catch (IllegalArgumentException ignored) {
+                    }
                 }
             });
         });
         ClientPlayNetworking.registerGlobalReceiver(Amongcraft.END_MEETING_PACKET, (client, handler, buf, responseSender) -> {
             client.execute(() -> {
-                if (client.currentScreen instanceof EmergencyMeetingScreen) {
-                    client.setScreen(null); // Close the meeting UI
+                if (client.currentScreen instanceof EmergencyMeetingScreen
+                        || client.currentScreen instanceof EjectionScreen) {
+                    client.setScreen(null); // Close the meeting / ejection UI
                 }
             });
         });
         ClientPlayNetworking.registerGlobalReceiver(Amongcraft.VOTE_END_PACKET, (client, handler, buf, responseSender) -> {
-            Map<UUID, Set<UUID>> fullVotes = new HashMap<>();
+            Map<UUID, List<UUID>> fullVotes = new LinkedHashMap<>();
 
             int size = buf.readInt();
             for (int i = 0; i < size; i++) {
                 UUID voter = buf.readUuid();
                 boolean hasVoted = buf.readBoolean();
-                if (hasVoted) {
-                    UUID votedFor = buf.readUuid();
-                    fullVotes.computeIfAbsent(votedFor, k -> new HashSet<>()).add(voter);
-                }
+                UUID target = hasVoted ? buf.readUuid() : net.minecraft.util.Util.NIL_UUID;
+                fullVotes.computeIfAbsent(target, k -> new ArrayList<>()).add(voter);
             }
 
             UUID eliminated;
@@ -126,16 +128,7 @@ public class AmongcraftClient implements ClientModInitializer {
                 eliminated = null;
             }
 
-            client.execute(() -> {
-                // Create a new voteEnd screen with a title
-                voteEnd screen = new voteEnd(Text.of("Vote Results"));
-
-                // Call your non-static method
-                screen.endVote(fullVotes, eliminated, wasImpostor);
-
-                // Set this screen as the current screen to display it
-                client.setScreen(screen);
-            });
+            client.execute(() -> client.setScreen(new EjectionScreen(fullVotes, eliminated, wasImpostor)));
         });
         ClientPlayNetworking.registerGlobalReceiver(TABLET_SYNC_PACKET_ID, (client, handler, buf, responseSender) -> {
             int count = buf.readInt();

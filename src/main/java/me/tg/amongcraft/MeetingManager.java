@@ -4,24 +4,16 @@ import com.google.gson.JsonElement;
 import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.block.*;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import org.apache.logging.log4j.core.jmx.Server;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -30,314 +22,327 @@ import static me.tg.amongcraft.AmongMapManager.getAllMatchingSpawns;
 import static me.tg.amongcraft.Amongcraft.*;
 import static me.tg.amongcraft.TaskProgressTracker.currentMap;
 
+/**
+ * Server-authoritative meeting / voting controller.
+ *
+ * The whole meeting lifecycle (discussion -> voting -> ejection) is driven by
+ * {@link #tick(MinecraftServer)}, which runs every server tick. Clients only
+ * render what the server tells them via packets, so the meeting can no longer
+ * desync or get stuck.
+ */
 public class MeetingManager {
 
-    public enum MeetingPhase {
-        START, DISCUSSION, VOTING, REVEAL
-    }
+    public enum Phase { DISCUSSION, VOTING, EJECTION }
 
-    private static MeetingPhase phase = MeetingPhase.START;
+    private static boolean active = false;
+    private static Phase phase = Phase.DISCUSSION;
     private static int ticksRemaining = 0;
 
-    private static final Map<UUID, UUID> currentVotes = new HashMap<>();
-    private static boolean votingActive = false;
+    /** voter -> target. A {@code null} value means the voter skipped. */
+    private static final Map<UUID, UUID> votes = new HashMap<>();
+    /** Players that were alive when the meeting started (the only valid voters). */
+    private static final Set<UUID> alive = new HashSet<>();
+    private static UUID caller = null;
+
+    @Nullable
+    private static UUID pendingElimination = null;
+
+    /** How long the ejection animation is shown before the game resumes. */
+    private static final int EJECTION_TICKS = 15 * 20;
+
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void register() {
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (world.isClient || hand != Hand.MAIN_HAND) return ActionResult.PASS;
 
             BlockPos pos = hitResult.getBlockPos();
-            if (world.getBlockState(pos).getBlock() == EMERGENCY_BUTTON) {
-                ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
+            if (world.getBlockState(pos).getBlock() != EMERGENCY_BUTTON) return ActionResult.PASS;
+            if (!(player instanceof ServerPlayerEntity serverPlayer)) return ActionResult.PASS;
 
-                if (!canCallMeeting(serverPlayer)) {
-                    return ActionResult.SUCCESS;
-                }
+            if (active) return ActionResult.SUCCESS;
+            if (!canCallMeeting(serverPlayer)) return ActionResult.SUCCESS;
 
-                if (!GameState.isRunning()) {
-                    player.sendMessage(Text.literal("The game hasn't started yet, but starting meeting for testing"), false);
-                    // return;
-                }
-
-                callMeeting(serverPlayer, false);
-                return ActionResult.SUCCESS;
-            }
-            return ActionResult.PASS;
+            callMeeting(serverPlayer, false);
+            return ActionResult.SUCCESS;
         });
-    }
-
-    public static void tick(MinecraftServer server) {
-        if (!votingActive) return;
-
-        if (ticksRemaining-- <= 0) {
-            switch (phase) {
-                case DISCUSSION -> {
-                    LOGGER.info("phase: " + phase);
-                    phase = MeetingPhase.VOTING;
-                    if (SettingsManager.get("meeting-voting") == null) {
-                        ticksRemaining = SettingsManager.getDefault("meeting-voting").getAsInt() * 20;
-                    } else {
-                        ticksRemaining = SettingsManager.get("meeting-voting").getAsInt() * 20;
-                    }
-                }
-                case VOTING -> {
-                    LOGGER.info("phase: " + phase);
-                    phase = MeetingPhase.REVEAL;
-                    tallyVotes(server, null);
-                    ticksRemaining = 100; // 5 seconds to show results
-                }
-            }
-        }
-    }
-
-    private static void endMeeting(ServerPlayerEntity voter) {
-        votingActive = false;
-        currentVotes.clear();
-        MinecraftServer server = voter.getServer();
-        ServerWorld world = voter.getServerWorld();
-
-        List<ServerPlayerEntity> players = voter.getServer().getPlayerManager().getPlayerList();
-        List<BlockPos> spawnPoints = getAllMatchingSpawns(world, AmongMapManager.MAP_SPAWN_BLOCK, currentMap);
-
-        Collections.shuffle(spawnPoints);
-
-        for (int i = 0; i < players.size(); i++) {
-            ServerPlayerEntity player = players.get(i);
-            BlockPos pos = spawnPoints.get(i % spawnPoints.size());
-            player.teleport(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, player.getYaw(), player.getPitch());
-        }
-
-        Collections.shuffle(players);
-        Collections.shuffle(spawnPoints);
-
-        DeathListener.clearBodies(world);
-        if (Objects.equals(SettingsManager.get("task-updates").getAsString(), "meetings")) {
-            TaskProgressTracker.updateXpBars();
-        }
-        for (UUID uuid : AmongCraftCommands.impostors) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player != null) {
-                player.addStatusEffect(new StatusEffectInstance(
-                        StatusEffects.WEAKNESS,
-                        SettingsManager.get("kill-cooldown").getAsInt() * 20,
-                        255,
-                        false,
-                        false
-                ));
-            }
-        }
-        broadcastMessage(server, Text.literal("Meeting ended. Resuming game."));
-    }
-
-
-    public static void resetMeetingData() {
-        meetingsCalled.clear();
-        lastMeetingTime = 0;
     }
 
     public static boolean canCallMeeting(ServerPlayerEntity player) {
         UUID uuid = player.getUuid();
-        ServerWorld world = (ServerWorld) player.getWorld();
-        DeathListener.clearBodies(world);
 
-        // Cooldown
-        JsonElement cooldownElement = SettingsManager.get("meeting-cooldown");
-        if (cooldownElement == null) {
-            LOGGER.info("Failed to get meeting-cooldown, getting default value.");
-            cooldownElement = SettingsManager.getDefault("meeting-cooldown");
-        }
-        int cooldown = cooldownElement.getAsInt();
-
+        int cooldown = settingInt("meeting-cooldown", 20);
         long elapsed = (System.currentTimeMillis() - lastMeetingTime) / 1000;
-        if (elapsed < cooldown) {
+        if (lastMeetingTime != 0 && elapsed < cooldown) {
             player.sendMessage(Text.literal("Wait " + (cooldown - elapsed) + "s before calling a meeting."), false);
             return false;
         }
 
-        // Limit per player
-        JsonElement maxCallsElement = SettingsManager.get("meeting-per-player");
-        if (maxCallsElement == null) {
-            LOGGER.info("Failed to get meeting-per-player, getting default value.");
-            maxCallsElement = SettingsManager.getDefault("meeting-per-player");
-        }
-        int maxCalls = maxCallsElement.getAsInt();
-
+        int maxCalls = settingInt("meeting-per-player", -1);
         if (maxCalls != -1 && meetingsCalled.getOrDefault(uuid, 0) >= maxCalls) {
-            player.sendMessage(Text.literal("You’ve used all your meetings."), false);
+            player.sendMessage(Text.literal("You've used all your meetings."), false);
             return false;
         }
 
         return true;
     }
 
-    public static void callMeeting(ServerPlayerEntity caller, Boolean isBodyReported) {
-        LOGGER.info("Meeting Started");
-        votingActive = true;
-        UUID uuid = caller.getUuid();
-        if (!isBodyReported) {
-        meetingsCalled.put(uuid, meetingsCalled.getOrDefault(uuid, 0) + 1);
-        }
+    public static void callMeeting(ServerPlayerEntity callerPlayer, boolean isBodyReport) {
+        if (active) return;
+        MinecraftServer server = callerPlayer.getServer();
+        if (server == null) return;
+
+        active = true;
+        phase = Phase.DISCUSSION;
+        caller = callerPlayer.getUuid();
+        votes.clear();
+        pendingElimination = null;
         lastMeetingTime = System.currentTimeMillis();
-        beginMeeting(caller.getServer(), caller);
+        if (!isBodyReport) {
+            meetingsCalled.merge(caller, 1, Integer::sum);
+        }
+
+        alive.clear();
+        alive.addAll(AmongCraftCommands.impostors);
+        alive.addAll(AmongCraftCommands.crewmates);
+
+        DeathListener.clearBodies(callerPlayer.getServerWorld());
+
+        ticksRemaining = settingInt("meeting-discussion", 15) * 20;
+
+        for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeUuid(caller);
+            buf.writeInt(alive.size());
+            for (UUID u : alive) {
+                buf.writeUuid(u);
+            }
+            ServerPlayNetworking.send(p, MEETING_PACKET, buf);
+        }
+        broadcastPhase(server);
+        LOGGER.info("Meeting started by " + callerPlayer.getEntityName() + " (bodyReport=" + isBodyReport + ")");
     }
 
-    private static void beginMeeting(MinecraftServer server, ServerPlayerEntity caller) {
-        LOGGER.info("beginning meeting");
+    public static void tick(MinecraftServer server) {
+        if (!active) return;
 
-        Set<UUID> aliveUUIDs = new HashSet<>();
-        aliveUUIDs.addAll(AmongCraftCommands.impostors);
-        aliveUUIDs.addAll(AmongCraftCommands.crewmates);
+        ticksRemaining--;
 
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-            buf.writeUuid(caller.getUuid());
+        // Keep clients' timers in sync while the meeting is interactive.
+        if (phase != Phase.EJECTION && ticksRemaining > 0 && ticksRemaining % 20 == 0) {
+            broadcastPhase(server);
+        }
 
-            buf.writeInt(aliveUUIDs.size());
-            for (UUID uuid : aliveUUIDs) {
-                buf.writeUuid(uuid);
+        if (ticksRemaining <= 0) {
+            switch (phase) {
+                case DISCUSSION -> startVoting(server);
+                case VOTING -> tallyVotes(server);
+                case EJECTION -> endMeeting(server);
             }
-
-            LOGGER.info("sending MEETING_PACKET to " + player.getEntityName() + " and the buffer is: " + buf + " with size: " + buf.readableBytes());
-            ServerPlayNetworking.send(player, MEETING_PACKET, buf);
         }
     }
+
+    private static void startVoting(MinecraftServer server) {
+        phase = Phase.VOTING;
+        ticksRemaining = settingInt("meeting-voting", 30) * 20;
+        broadcastPhase(server);
+    }
+
     public static void handleVote(ServerPlayerEntity voter, @Nullable UUID votedFor) {
-        Amongcraft.LOGGER.info(voter + " voted for " + votedFor);
-        if (!votingActive) {
-            LOGGER.info("Voting is not active");
-            return;
-        } // ignore if voting not active
+        if (!active || phase != Phase.VOTING) return;
 
         UUID voterUUID = voter.getUuid();
-
-        // Don't allow multiple votes
-        if (currentVotes.containsKey(voterUUID)) {
-            // Optionally send message to voter that they've already voted
+        if (!alive.contains(voterUUID)) {
+            return; // dead players (and spectators) cannot vote
+        }
+        if (votes.containsKey(voterUUID)) {
             voter.sendMessage(Text.literal("You have already voted!"), false);
             return;
         }
 
-        // Record vote (votedFor == null means skip)
-        currentVotes.put(voterUUID, votedFor);
+        votes.put(voterUUID, votedFor);
+        LOGGER.info(voter.getEntityName() + " voted for " + votedFor);
 
-        // Check if all players have voted or timer expired (simple example)
         if (allVotesIn(voter.getServer())) {
-            tallyVotes(voter.getServer(), voter);
+            tallyVotes(voter.getServer());
         }
     }
-    private static boolean allVotesIn(MinecraftServer server) {
-        Set<UUID> aliveUUIDs = new HashSet<>();
-        aliveUUIDs.addAll(AmongCraftCommands.impostors);
-        aliveUUIDs.addAll(AmongCraftCommands.crewmates);
-        LOGGER.info("All alive players:" + aliveUUIDs);
-        for (UUID uuid : aliveUUIDs) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player == null) continue;
 
-            if (!currentVotes.containsKey(uuid)) {
-                LOGGER.info("not all votes in");
-                return false;
-            }
+    private static boolean allVotesIn(MinecraftServer server) {
+        for (UUID uuid : alive) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player == null) continue; // offline players never block the meeting
+            if (!votes.containsKey(uuid)) return false;
         }
-        LOGGER.info("all votes in");
         return true;
     }
-    private static void tallyVotes(MinecraftServer server, ServerPlayerEntity voter) {
-        votingActive = false;
 
-        Map<UUID, Integer> voteCounts = new HashMap<>();
-        int skipVotes = 0;
-
-        for (UUID votedFor : currentVotes.values()) {
-            if (votedFor == null) {
-                skipVotes++;
-                continue;
-            }
-            LOGGER.info("registering vote for: " + votedFor);
-            voteCounts.put(votedFor, voteCounts.getOrDefault(votedFor, 0) + 1);
-        }
-
-        // Find max votes
-        int maxVotes = 0;
-        UUID eliminated = null;
-
-        for (Map.Entry<UUID, Integer> entry : voteCounts.entrySet()) {
-            if (entry.getValue() > maxVotes) {
-                maxVotes = entry.getValue();
-                eliminated = entry.getKey();
-            } else if (entry.getValue() == maxVotes) {
-                // Tie - eliminate nobody or handle tie logic
-                eliminated = null;
+    private static void tallyVotes(MinecraftServer server) {
+        Map<UUID, Integer> counts = new HashMap<>();
+        int skips = 0;
+        for (UUID target : votes.values()) {
+            if (target == null) {
+                skips++;
+            } else {
+                counts.merge(target, 1, Integer::sum);
             }
         }
 
-        if (eliminated == null) {
-            // No elimination (tie or skip majority)
-            LOGGER.info("tie");
-            broadcastMessage(server, Text.literal("No one was eliminated."));
-        } else {
-            // Eliminate player
-            LOGGER.info("elminating:" + eliminated);
-            eliminatePlayer(voter.getServer(), eliminated);
-        }
-        currentVotes.clear();
-
-        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-
-        buf.writeInt(currentVotes.size());
-        for (Map.Entry<UUID, UUID> entry : currentVotes.entrySet()) {
-            buf.writeUuid(entry.getKey()); // voter
-            buf.writeBoolean(entry.getValue() != null); // votedFor is present
-            if (entry.getValue() != null) {
-                buf.writeUuid(entry.getValue()); // voted for whom
+        // The ejected player must have strictly more votes than everyone else
+        // AND more votes than "skip". A tie (between players or with skip) ejects no one.
+        int topVotes = 0;
+        UUID topPlayer = null;
+        int topCount = 0;
+        for (Map.Entry<UUID, Integer> e : counts.entrySet()) {
+            if (e.getValue() > topVotes) {
+                topVotes = e.getValue();
+                topPlayer = e.getKey();
+                topCount = 1;
+            } else if (e.getValue() == topVotes) {
+                topCount++;
             }
         }
 
-        buf.writeBoolean(eliminated != null);
-        if (eliminated != null) {
-            buf.writeUuid(eliminated);
-            buf.writeBoolean(AmongCraftCommands.impostors.contains(eliminated));
+        UUID eliminated = (topPlayer != null && topCount == 1 && topVotes > skips) ? topPlayer : null;
+        boolean wasImpostor = eliminated != null && AmongCraftCommands.impostors.contains(eliminated);
+        pendingElimination = eliminated;
+
+        // Send the full vote breakdown to every client so the ejection animation
+        // can show who voted for whom. A fresh buffer is required per recipient.
+        for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeInt(votes.size());
+            for (Map.Entry<UUID, UUID> e : votes.entrySet()) {
+                buf.writeUuid(e.getKey());
+                buf.writeBoolean(e.getValue() != null);
+                if (e.getValue() != null) {
+                    buf.writeUuid(e.getValue());
+                }
+            }
+            buf.writeBoolean(eliminated != null);
+            if (eliminated != null) {
+                buf.writeUuid(eliminated);
+                buf.writeBoolean(wasImpostor);
+            }
+            ServerPlayNetworking.send(p, VOTE_END_PACKET, buf);
         }
 
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            ServerPlayNetworking.send(player, Amongcraft.VOTE_END_PACKET, buf);
-        }
-        AmongCraftCommands.resetSpectatorTabList(server);
-        endMeeting(voter);
+        phase = Phase.EJECTION;
+        ticksRemaining = EJECTION_TICKS;
+        votes.clear();
+        LOGGER.info("Vote tallied. Ejected: " + eliminated);
     }
+
+    private static void endMeeting(MinecraftServer server) {
+        active = false;
+        phase = Phase.DISCUSSION;
+
+        // Apply the elimination only after the ejection animation has played.
+        if (pendingElimination != null) {
+            eliminatePlayer(server, pendingElimination);
+        } else {
+            broadcastMessage(server, Text.literal("No one was ejected."));
+        }
+        pendingElimination = null;
+
+        List<ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
+        if (!players.isEmpty()) {
+            ServerWorld world = players.get(0).getServerWorld();
+            List<BlockPos> spawnPoints = getAllMatchingSpawns(world, AmongMapManager.MAP_SPAWN_BLOCK, currentMap);
+            if (!spawnPoints.isEmpty()) {
+                Collections.shuffle(spawnPoints);
+                for (int i = 0; i < players.size(); i++) {
+                    ServerPlayerEntity player = players.get(i);
+                    BlockPos pos = spawnPoints.get(i % spawnPoints.size());
+                    player.teleport(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5,
+                            player.getYaw(), player.getPitch());
+                }
+            }
+            DeathListener.clearBodies(world);
+        }
+
+        JsonElement taskUpdates = SettingsManager.get("task-updates");
+        if (taskUpdates != null && "meetings".equals(taskUpdates.getAsString())) {
+            TaskProgressTracker.updateXpBars();
+        }
+
+        int killCooldown = settingInt("kill-cooldown", 30);
+        for (UUID uuid : AmongCraftCommands.impostors) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player != null) {
+                player.addStatusEffect(new StatusEffectInstance(
+                        StatusEffects.WEAKNESS, killCooldown * 20, 255, false, false));
+            }
+        }
+
+        AmongCraftCommands.resetSpectatorTabList(server);
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            ServerPlayNetworking.send(player, END_MEETING_PACKET, new PacketByteBuf(Unpooled.buffer()));
+        }
+        broadcastMessage(server, Text.literal("Meeting ended. Resuming game."));
+    }
+
     private static void eliminatePlayer(MinecraftServer server, UUID playerUUID) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerUUID);
         if (player == null) return;
 
-        // Check for Jester role
-        if (AmongCraftCommands.getPlayerRole(playerUUID).equals("Jester")) {
-            broadcastMessage(server, Text.literal("§d" + player.getEntityName() + " was voted out... and they were the §lJESTER§r§d!"));
+        if ("Jester".equals(AmongCraftCommands.getPlayerRole(playerUUID))) {
+            broadcastMessage(server, Text.literal("§d" + player.getEntityName()
+                    + " was voted out... and they were the §lJESTER§r§d!"));
             broadcastMessage(server, Text.literal("§l§6The Jester wins!"));
-
-            // Kill everyone to end the game
             for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
                 AmongCraftCommands.setPlayerDead(p);
             }
-            return; // Do not continue with regular elimination logic
+            return;
         }
 
-        // Notify everyone of role
         if (AmongCraftCommands.impostors.contains(player.getUuid())) {
-            if (AmongCraftCommands.impostors.size() == 1) {
-                broadcastMessage(server, Text.literal(player.getEntityName() + " was voted out, and they were the impostor!"));
-            } else {
-                broadcastMessage(server, Text.literal(player.getEntityName() + " was voted out, and they were an impostor!"));
-            }
+            String article = AmongCraftCommands.impostors.size() == 1 ? "the" : "an";
+            broadcastMessage(server, Text.literal(player.getEntityName()
+                    + " was voted out, and they were " + article + " impostor!"));
         } else {
-            broadcastMessage(server, Text.literal(player.getEntityName() + " was voted out, and they were a crewmate!"));
+            broadcastMessage(server, Text.literal(player.getEntityName()
+                    + " was voted out, and they were a crewmate!"));
         }
 
         AmongCraftCommands.setPlayerDead(player);
+    }
+
+    public static void resetMeetingData() {
+        active = false;
+        phase = Phase.DISCUSSION;
+        ticksRemaining = 0;
+        votes.clear();
+        alive.clear();
+        caller = null;
+        pendingElimination = null;
+        meetingsCalled.clear();
+        lastMeetingTime = 0;
+    }
+
+    private static void broadcastPhase(MinecraftServer server) {
+        int secondsLeft = Math.max(0, ticksRemaining / 20);
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeString(phase.name());
+            buf.writeInt(secondsLeft);
+            ServerPlayNetworking.send(player, MEETING_PHASE_PACKET, buf);
+        }
     }
 
     private static void broadcastMessage(MinecraftServer server, Text message) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             player.sendMessage(message, false);
         }
+    }
+
+    private static int settingInt(String key, int fallback) {
+        JsonElement element = SettingsManager.get(key);
+        if (element == null) {
+            element = SettingsManager.getDefault(key);
+        }
+        return element != null ? element.getAsInt() : fallback;
     }
 }
