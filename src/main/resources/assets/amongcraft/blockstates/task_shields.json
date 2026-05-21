@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/shields",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/shields"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/shields",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/shields",
+      "y": 270
+    }
+  }
+}

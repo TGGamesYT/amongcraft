@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/upload",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/upload"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/upload",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/upload",
+      "y": 270
+    }
+  }
+}

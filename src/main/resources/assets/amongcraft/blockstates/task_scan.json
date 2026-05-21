@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/scan"
+    },
+    "facing=south": {
+      "model": "amongcraft:block/scan"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/scan"
+    },
+    "facing=east": {
+      "model": "amongcraft:block/scan"
+    }
+  }
+}

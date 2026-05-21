@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/divert",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/divert"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/divert",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/divert",
+      "y": 270
+    }
+  }
+}

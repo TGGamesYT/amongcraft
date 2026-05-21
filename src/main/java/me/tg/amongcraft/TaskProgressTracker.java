@@ -193,7 +193,7 @@ public class TaskProgressTracker {
 
     public static void markTaskAsDone(ServerPlayerEntity player, String taskId, BlockPos blockPos) {
         String coords = blockPos.getX() + "," + blockPos.getY() + "," + blockPos.getZ();
-        Path file = server.getSavePath(WorldSavePath.ROOT).resolve("taskblocks.json");
+        Path file = server.getSavePath(WorldSavePath.ROOT).resolve("amongcraft/taskblocks.json");
 
         Amongcraft.LOGGER.info("running markasDone(ServerEntity " + player.getName() + ", String " + taskId + ", BlockPos " + blockPos + ")");
 
@@ -266,7 +266,7 @@ public class TaskProgressTracker {
 
     public static boolean hasPlayerCompletedTask(ServerPlayerEntity player, BlockPos pos) {
         String coords = pos.getX() + "," + pos.getY() + "," + pos.getZ();
-        Path file = server.getSavePath(WorldSavePath.ROOT).resolve("taskblocks.json");
+        Path file = server.getSavePath(WorldSavePath.ROOT).resolve("amongcraft/taskblocks.json");
 
         try {
             if (!Files.exists(file)) return false;
@@ -345,7 +345,7 @@ public class TaskProgressTracker {
         tasksByRarity.put("long", new ArrayList<>());
 
         try {
-            Path file = server.getSavePath(WorldSavePath.ROOT).resolve("taskblocks.json");
+            Path file = server.getSavePath(WorldSavePath.ROOT).resolve("amongcraft/taskblocks.json");
             if (!Files.exists(file)) return;
 
             JsonObject json = JsonParser.parseReader(Files.newBufferedReader(file)).getAsJsonObject();

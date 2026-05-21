@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/o2_filter",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/o2_filter"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/o2_filter",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/o2_filter",
+      "y": 270
+    }
+  }
+}

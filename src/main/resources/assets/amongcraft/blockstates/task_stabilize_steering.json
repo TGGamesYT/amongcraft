@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/steering",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/steering"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/steering",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/steering",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/swipe_card",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/swipe_card"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/swipe_card",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/swipe_card",
+      "y": 270
+    }
+  }
+}

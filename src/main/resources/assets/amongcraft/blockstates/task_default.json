@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/task_button"
+    },
+    "facing=south": {
+      "model": "amongcraft:block/task_button"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/task_button"
+    },
+    "facing=east": {
+      "model": "amongcraft:block/task_button"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/calibrate",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/calibrate"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/calibrate",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/calibrate",
+      "y": 270
+    }
+  }
+}

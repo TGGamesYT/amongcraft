@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/manifolds",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/manifolds"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/manifolds",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/manifolds",
+      "y": 270
+    }
+  }
+}

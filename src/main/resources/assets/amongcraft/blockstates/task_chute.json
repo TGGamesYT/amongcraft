@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/chute",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/chute"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/chute",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/chute",
+      "y": 270
+    }
+  }
+}

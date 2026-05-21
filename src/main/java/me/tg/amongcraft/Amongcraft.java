@@ -80,8 +80,22 @@ public class Amongcraft implements ModInitializer {
 
         // BLOCKS
         public static final Block START_BUTTON_BLOCK = new StartBlock();
-        public static final Block TASK_BUTTON_BLOCK = new TaskBlock();
+        public static final Block TASK_BUTTON_BLOCK = new LegacyTaskBlock();
         public static final Block WENT_BLOCK = new WentBlock();
+
+        // One block instance per task type (built before registration in onInitialize).
+        public static final java.util.Map<TaskBlock.TaskType, Block> TASK_BLOCKS =
+                new java.util.EnumMap<>(TaskBlock.TaskType.class);
+
+        static {
+            for (TaskBlock.TaskType type : TaskBlock.TaskType.values()) {
+                TASK_BLOCKS.put(type, new TaskBlock(type));
+            }
+        }
+
+        public static Block taskBlock(TaskBlock.TaskType type) {
+            return TASK_BLOCKS.get(type);
+        }
 
         // ITEMS
         public static final Item KILLER_KNIFE = new KillerKnifeItem();
@@ -111,6 +125,9 @@ public class Amongcraft implements ModInitializer {
                 entries.add(Amongcraft.START_BUTTON_BLOCK);
                 entries.add(Amongcraft.SWITCH_WENT);
                 entries.add(Amongcraft.TASK_BUTTON_BLOCK);
+                for (Block taskBlock : Amongcraft.TASK_BLOCKS.values()) {
+                    entries.add(taskBlock);
+                }
                 entries.add(Amongcraft.USE);
                 entries.add(Amongcraft.WENT_BLOCK);
                 entries.add(Amongcraft.WENT_LINKER);
@@ -187,6 +204,9 @@ public class Amongcraft implements ModInitializer {
         public void onInitialize() {
             register("start_button", START_BUTTON_BLOCK, new FabricItemSettings());
             register("task_button", TASK_BUTTON_BLOCK, new FabricItemSettings());
+            for (Map.Entry<TaskBlock.TaskType, Block> entry : TASK_BLOCKS.entrySet()) {
+                register("task_" + entry.getKey().asString(), entry.getValue(), new FabricItemSettings());
+            }
             register("went", WENT_BLOCK, new FabricItemSettings());
             register("map_spawn", AmongMapManager.MAP_SPAWN_BLOCK, new FabricItemSettings());
             register("lobby_spawn", AmongMapManager.LOBBY_SPAWN_BLOCK, new FabricItemSettings());
@@ -223,6 +243,7 @@ public class Amongcraft implements ModInitializer {
             TaskPacket.init();
             MeetingManager.register();
             DeathListener.register();
+            TaskBlockMigrator.register();
             CameraSystem.init();
             CORPSE_ENTITY_TYPE = Registry.register(
                     Registries.ENTITY_TYPE,
@@ -632,34 +653,37 @@ public class Amongcraft implements ModInitializer {
 
         // — BLOCK: TASK BUTTON —
         public static class TaskBlock extends Block {
-            public static final EnumProperty<TaskType> TASK = EnumProperty.of("task", TaskType.class);
 
+            private final TaskType taskType;
 
-            public TaskBlock() {
+            public TaskBlock(TaskType type) {
                 super(FabricBlockSettings.create()
                         .strength(1.0f)
                         .sounds(BlockSoundGroup.WOOD));
+                this.taskType = type;
                 this.setDefaultState(this.stateManager.getDefaultState()
-                        .with(TASK, TaskType.DEFAULT)
                         .with(FACING, Direction.NORTH));
+            }
+
+            public TaskType getTaskType() {
+                return taskType;
             }
 
             @Override
             public void onPlaced(World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack) {
                 super.onPlaced(world, pos, state, placer, itemStack);
 
-                if (!world.isClient && itemStack.hasNbt()) {
-                    NbtCompound nbt = itemStack.getNbt();
-                    if (nbt.contains("task")) {
-                        String taskId = nbt.getString("task");
-                        String mapId = nbt.getString("map");
-
-                        ServerWorld serverWorld = (ServerWorld) world;
-                        saveTaskToJson(pos, taskId, mapId, serverWorld.getServer());
-
-                        // Spawn name tag display above the block
-                        spawnFloatingTaskName(serverWorld, pos, taskId);
+                if (!world.isClient && placer instanceof PlayerEntity && world instanceof ServerWorld serverWorld) {
+                    String mapId = "default";
+                    if (itemStack.hasNbt() && itemStack.getNbt().contains("map")) {
+                        mapId = itemStack.getNbt().getString("map");
                     }
+
+                    String taskId = this.taskType.asString();
+                    saveTaskToJson(pos, taskId, mapId, serverWorld.getServer());
+
+                    // Spawn name tag display above the block
+                    spawnFloatingTaskName(serverWorld, pos, taskId);
                 }
             }
 
@@ -722,24 +746,13 @@ public class Amongcraft implements ModInitializer {
 
             @Override
             protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
-                builder.add(TASK, FACING);
+                builder.add(FACING);
             }
 
             @Override
             public BlockState getPlacementState(ItemPlacementContext ctx) {
-                ItemStack stack = ctx.getStack();
-                Direction playerFacing = ctx.getHorizontalPlayerFacing();
-                TaskType type = TaskType.DEFAULT; // default
-
-                if (stack.hasNbt() && stack.getNbt().contains("task")) {
-                    try {
-                        type = TaskType.valueOf(stack.getNbt().getString("task").toUpperCase());
-                    } catch (IllegalArgumentException ignored) {}
-                }
-
                 return this.getDefaultState()
-                        .with(TASK, type)
-                        .with(FACING, playerFacing);
+                        .with(FACING, ctx.getHorizontalPlayerFacing());
             }
             //shapes
             // base 2
@@ -1146,11 +1159,10 @@ public class Amongcraft implements ModInitializer {
             );
             @Override
             public VoxelShape getOutlineShape(BlockState state, BlockView view, BlockPos pos, ShapeContext context) {
-                TaskType task = state.get(TaskBlock.TASK);
                 Direction facing = state.get(TaskBlock.FACING);
 
                 VoxelShape baseShape;
-                switch (task) {
+                switch (this.taskType) {
                     case DEFAULT:
                         baseShape = VoxelShapes.fullCube();
                         break;

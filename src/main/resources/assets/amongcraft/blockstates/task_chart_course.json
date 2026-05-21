@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "amongcraft:block/course",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "amongcraft:block/course"
+    },
+    "facing=west": {
+      "model": "amongcraft:block/course",
+      "y": 90
+    },
+    "facing=east": {
+      "model": "amongcraft:block/course",
+      "y": 270
+    }
+  }
+}
