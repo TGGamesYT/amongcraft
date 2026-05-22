@@ -214,20 +214,30 @@ public class StartReactorTaskScreen extends TaskMinigameScreen {
             wrongCell = cell;
             phase = PHASE_WRONG;
             timer = WRONG_TICKS;
+            playSound(net.minecraft.sound.SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f);
             return;
         }
 
         correctFlashCell = cell;
         correctFlashTimer = 6;
         inputProgress++;
+        playSound(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
 
         if (inputProgress >= sequence.size()) {
             if (round >= TOTAL_ROUNDS) {
+                playSound(net.minecraft.sound.SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
                 completeTask();
             } else {
                 round++;
                 startRound();
             }
+        }
+    }
+
+    private void playSound(net.minecraft.sound.SoundEvent sound, float pitch) {
+        if (client != null) {
+            client.getSoundManager().play(
+                    net.minecraft.client.sound.PositionedSoundInstance.master(sound, pitch));
         }
     }
 }

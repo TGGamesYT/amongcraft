@@ -100,6 +100,7 @@ public class ShieldsTaskScreen extends TaskMinigameScreen {
         for (int i = 0; i < 7; i++) {
             if (hitHex(mouseX, mouseY, i)) {
                 isBlue[i] = !isBlue[i];
+                playSound(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
                 checkDone();
                 return true;
             }
@@ -111,6 +112,14 @@ public class ShieldsTaskScreen extends TaskMinigameScreen {
         for (boolean b : isBlue) {
             if (!b) return;
         }
+        playSound(net.minecraft.sound.SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
         completeTask();
+    }
+
+    private void playSound(net.minecraft.sound.SoundEvent sound, float pitch) {
+        if (client != null) {
+            client.getSoundManager().play(
+                    net.minecraft.client.sound.PositionedSoundInstance.master(sound, pitch));
+        }
     }
 }
