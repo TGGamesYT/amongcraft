@@ -200,6 +200,22 @@ public class AmongCraftCommands {
                 literal("amongcraft")
                         .then(literal("debug")
                                 .requires(source -> source.hasPermissionLevel(2))
+                                .then(literal("mode")
+                                        .then(argument("value", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                .executes(ctx -> {
+                                                    boolean v = com.mojang.brigadier.arguments.BoolArgumentType.getBool(ctx, "value");
+                                                    GameState.debugMode = v;
+                                                    ctx.getSource().sendFeedback(() -> Text.literal("§eDebug mode " + (v ? "enabled" : "disabled") + "."), false);
+                                                    return 1;
+                                                })))
+                                .then(literal("stop")
+                                        .executes(ctx -> {
+                                            GameState.debugMode = false;
+                                            GameState.setRunning(false);
+                                            AmongCraftWinListener.killAll(ctx.getSource().getServer());
+                                            ctx.getSource().sendFeedback(() -> Text.literal("§eDebug game stopped."), false);
+                                            return 1;
+                                        }))
                                 .then(literal("list")
                                         .executes(ctx -> {
                                             ctx.getSource().sendFeedback(() -> Text.literal("§e--- AmongCraft Roles ---"), false);

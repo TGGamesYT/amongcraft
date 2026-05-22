@@ -36,7 +36,7 @@ public class AmongCraftWinListener {
         }
 
         if (!alive.isEmpty()) {
-            if (GameState.isRunning()) {
+            if (GameState.isRunning() && !GameState.debugMode) {
                 if (impostorCount >= crewmateCount && impostorCount > 0) {
                     // Impostors win
                     server.getPlayerManager().broadcast(Text.literal("§cImpostors win!"), false);

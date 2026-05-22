@@ -329,6 +329,7 @@ public class TaskProgressTracker {
 
 
     private static void triggerCrewmateWin() {
+        if (GameState.debugMode) return;
         Amongcraft.LOGGER.info("All crewmates completed their tasks! Crewmates win!");
         server.getPlayerManager().broadcast(Text.literal("§aCrewmates win!"), false);
         AmongCraftWinListener.killAll(server);
