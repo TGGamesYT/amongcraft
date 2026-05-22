@@ -1,14 +1,18 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
 /**
  * Swipe Card minigame. A horizontal scanner slot with a draggable card. The
- * player drags the card left-to-right; on release the swipe is judged valid if
- * it travelled at least ~150px at a reasonable average speed. Valid swipes win;
- * invalid ones flash the status light red and reset the card.
+ * card is a real 2D draggable object: the player grabs it with the mouse and
+ * physically moves it across the scanner, the card following the cursor in both
+ * axes while held. On release the swipe is judged valid if it travelled at
+ * least ~150px at a reasonable average speed. Valid swipes win; invalid ones
+ * flash the status light red and reset the card.
  */
 public class SwipeCardTaskScreen extends TaskMinigameScreen {
 
@@ -17,14 +21,21 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
     // Card geometry.
     private int cardW, cardH;
 
-    /** Card left edge offset from slot left, in pixels. */
-    private double cardOffset = 0.0;
+    /** Card top-left position, in absolute screen pixels (2D). */
+    private double cardX = 0.0;
+    private double cardY = 0.0;
+    /** Resting position of the card (snaps back here on a failed swipe). */
+    private double homeX = 0.0;
+    private double homeY = 0.0;
+
     private boolean dragging = false;
+    /** Offset from card top-left to the grab point. */
     private double grabDX = 0.0;
+    private double grabDY = 0.0;
 
     /** Swipe tracking. */
     private long swipeStartMs = 0;
-    private double swipeStartOffset = 0.0;
+    private double swipeStartX = 0.0;
 
     /** Status light: 0 = gray, 1 = green, 2 = red. */
     private int lightState = 0;
@@ -48,19 +59,16 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
 
         cardW = 90;
         cardH = 48;
-        cardOffset = 0.0;
+        homeX = slotX;
+        homeY = slotY + (slotH - cardH) / 2.0;
+        cardX = homeX;
+        cardY = homeY;
     }
 
-    private double maxOffset() {
-        return slotW - cardW;
-    }
-
-    private int cardLeft() {
-        return slotX + (int) Math.round(cardOffset);
-    }
-
-    private int cardTop() {
-        return slotY + (slotH - cardH) / 2;
+    private void playSound(net.minecraft.sound.SoundEvent event, float pitch) {
+        if (client != null) {
+            client.getSoundManager().play(PositionedSoundInstance.master(event, pitch));
+        }
     }
 
     @Override
@@ -75,7 +83,7 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
 
     @Override
     protected void renderTask(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.drawText(textRenderer, Text.literal("Swipe the card left to right at a steady speed."),
+        context.drawText(textRenderer, Text.literal("Grab the card and drag it across the scanner."),
                 panelX + 14, contentTop() + 8, 0xFFCfd8e0, false);
 
         // Scanner slot.
@@ -85,11 +93,11 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
         // Slot guide rail.
         context.drawHorizontalLine(slotX + 6, slotX + slotW - 6, slotY + slotH / 2, 0xFF2C3642);
 
-        // Card.
-        int cx = cardLeft();
-        int cy = cardTop();
-        context.fill(cx, cy, cx + cardW, cy + cardH, 0xFF0E78C8);
-        context.drawBorder(cx - 1, cy - 1, cardW + 2, cardH + 2, 0xFF101418);
+        // Card (drawn at its current 2D position).
+        int cx = (int) Math.round(cardX);
+        int cy = (int) Math.round(cardY);
+        context.fill(cx, cy, cx + cardW, cy + cardH, dragging ? 0xFF1490E0 : 0xFF0E78C8);
+        context.drawBorder(cx - 1, cy - 1, cardW + 2, cardH + 2, dragging ? 0xFFFFFFFF : 0xFF101418);
         // Magnetic stripe on the card.
         context.fill(cx + 6, cy + 10, cx + cardW - 6, cy + 18, 0xFF0A0A0A);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal("CARD"),
@@ -121,9 +129,7 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
     }
 
     private boolean overCard(double mx, double my) {
-        int cx = cardLeft();
-        int cy = cardTop();
-        return mx >= cx && mx <= cx + cardW && my >= cy && my <= cy + cardH;
+        return mx >= cardX && mx <= cardX + cardW && my >= cardY && my <= cardY + cardH;
     }
 
     @Override
@@ -131,9 +137,11 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
         if (isFinished() || button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (overCard(mouseX, mouseY)) {
             dragging = true;
-            grabDX = mouseX - cardLeft();
+            grabDX = mouseX - cardX;
+            grabDY = mouseY - cardY;
             swipeStartMs = System.currentTimeMillis();
-            swipeStartOffset = cardOffset;
+            swipeStartX = cardX;
+            playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -142,8 +150,9 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
         if (isFinished() || !dragging) return super.mouseDragged(mouseX, mouseY, button, dx, dy);
-        double newOffset = mouseX - grabDX - slotX;
-        cardOffset = Math.max(0.0, Math.min(maxOffset(), newOffset));
+        // Card follows the cursor in 2D, clamped to the panel so it stays visible.
+        cardX = Math.max(panelX, Math.min(panelX + panelWidth - cardW, mouseX - grabDX));
+        cardY = Math.max(contentTop(), Math.min(panelY + panelHeight - cardH, mouseY - grabDY));
         return true;
     }
 
@@ -154,21 +163,29 @@ public class SwipeCardTaskScreen extends TaskMinigameScreen {
         }
         dragging = false;
 
-        double distance = cardOffset - swipeStartOffset;
+        double distance = cardX - swipeStartX;
         double durationSec = (System.currentTimeMillis() - swipeStartMs) / 1000.0;
         if (durationSec < 0.001) durationSec = 0.001;
         double speed = Math.abs(distance) / durationSec;
 
-        if (distance < MIN_DISTANCE || speed < MIN_SPEED || speed > MAX_SPEED) {
+        // Card must end roughly on the scanner rail to count as a swipe through it.
+        double railY = slotY + (slotH - cardH) / 2.0;
+        boolean onRail = Math.abs(cardY - railY) <= slotH;
+
+        if (distance < MIN_DISTANCE || speed < MIN_SPEED || speed > MAX_SPEED || !onRail) {
             lightState = 2;
             lightTimer = 20;
-            cardOffset = 0.0;
-            if (distance < MIN_DISTANCE) message = "Too short - try again";
+            cardX = homeX;
+            cardY = homeY;
+            if (!onRail) message = "Keep it on the scanner";
+            else if (distance < MIN_DISTANCE) message = "Too short - try again";
             else if (speed < MIN_SPEED) message = "Too slow - try again";
             else message = "Too fast - try again";
+            playSound(SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f);
         } else {
             lightState = 1;
             message = "Accepted";
+            playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
             completeTask();
         }
         return true;

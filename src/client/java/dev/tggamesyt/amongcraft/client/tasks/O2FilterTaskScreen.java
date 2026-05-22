@@ -1,12 +1,14 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.Random;
 
 /**
- * O2 Filter — 6 green leaves scattered in a play area. The player drags leaves
+ * O2 Filter — 6 brown leaves scattered in a play area. The player drags leaves
  * into the bin rectangle on the left. Releasing with drag velocity flicks the
  * leaf, which then coasts with friction and bounces off the edges. Win when all
  * 6 leaves rest inside the bin.
@@ -104,8 +106,13 @@ public class O2FilterTaskScreen extends TaskMinigameScreen {
     }
 
     private void checkCompletion() {
+        if (isFinished()) return;
         for (Leaf l : leaves) {
             if (!inBin(l)) return;
+        }
+        if (client != null) {
+            client.getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
         }
         completeTask();
     }
@@ -127,25 +134,62 @@ public class O2FilterTaskScreen extends TaskMinigameScreen {
 
         // Leaves.
         for (Leaf l : leaves) {
-            int color = inBin(l) ? 0xFF55DD55 : 0xFF22AA22;
-            drawCircle(context, l.x, l.y, LEAF_R, color);
+            drawLeaf(context, l.x, l.y, inBin(l));
         }
     }
 
-    private void drawCircle(DrawContext context, float cx, float cy, float r, int color) {
-        int minX = (int) Math.floor(cx - r);
-        int maxX = (int) Math.ceil(cx + r);
-        int minY = (int) Math.floor(cy - r);
-        int maxY = (int) Math.ceil(cy + r);
-        float r2 = r * r;
+    /**
+     * Draws a brown leaf: a teardrop/oval blade with a small stem and a
+     * lighter center vein line.
+     */
+    private void drawLeaf(DrawContext context, float cx, float cy, boolean inBin) {
+        // Brown/olive palette. Slightly lighter once resting in the bin.
+        int blade = inBin ? 0xFFA9762F : 0xFF6E4A22;
+        int bladeEdge = inBin ? 0xFF7C5520 : 0xFF4A3115;
+        int vein = inBin ? 0xFFD8B070 : 0xFF9C7038;
+        int stem = 0xFF3E2A12;
+
+        float rx = LEAF_R;          // horizontal half-extent (oval/teardrop)
+        float ry = LEAF_R * 1.35f;  // vertical half-extent (longer leaf)
+        int minX = (int) Math.floor(cx - rx - 1);
+        int maxX = (int) Math.ceil(cx + rx + 1);
+        int minY = (int) Math.floor(cy - ry - 3);
+        int maxY = (int) Math.ceil(cy + ry + 4);
         for (int px = minX; px < maxX; px++) {
             for (int py = minY; py < maxY; py++) {
                 if (px < areaX1 || px >= areaX2 || py < areaY1 || py >= areaY2) continue;
                 float dx = px + 0.5f - cx;
                 float dy = py + 0.5f - cy;
-                if (dx * dx + dy * dy <= r2) {
-                    context.fill(px, py, px + 1, py + 1, color);
+                // Teardrop: narrow the leaf toward the bottom tip.
+                float taper = 1f - 0.45f * ((dy / ry) + 1f) * 0.5f;
+                if (taper < 0.15f) taper = 0.15f;
+                float nx = dx / (rx * taper);
+                float ny = dy / ry;
+                float d2 = nx * nx + ny * ny;
+                if (d2 <= 1f) {
+                    int c = d2 >= 0.78f ? bladeEdge : blade;
+                    context.fill(px, py, px + 1, py + 1, c);
                 }
+            }
+        }
+        // Center vein line.
+        int vx = (int) cx;
+        int vTop = (int) (cy - ry + 2);
+        int vBot = (int) (cy + ry - 1);
+        for (int py = vTop; py < vBot; py++) {
+            if (py < areaY1 || py >= areaY2) continue;
+            if (vx >= areaX1 && vx < areaX2) {
+                context.fill(vx, py, vx + 1, py + 1, vein);
+            }
+        }
+        // Small stem at the bottom tip.
+        int stemX = (int) cx;
+        int stemTop = (int) (cy + ry - 1);
+        int stemBot = (int) (cy + ry + 3);
+        for (int py = stemTop; py < stemBot; py++) {
+            if (py < areaY1 || py >= areaY2) continue;
+            if (stemX >= areaX1 && stemX < areaX2) {
+                context.fill(stemX, py, stemX + 1, py + 1, stem);
             }
         }
     }
@@ -172,6 +216,10 @@ public class O2FilterTaskScreen extends TaskMinigameScreen {
             best.dragging = true;
             best.vx = 0;
             best.vy = 0;
+            if (client != null) {
+                client.getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
+            }
             dragStartX = mouseX;
             dragStartY = mouseY;
             lastMouseX = mouseX;

@@ -1,6 +1,9 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -36,6 +39,8 @@ public class ProgressTaskScreen extends TaskMinigameScreen {
         if (elapsed < DURATION_TICKS) {
             elapsed++;
             if (elapsed >= DURATION_TICKS) {
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
                 completeTask();
             }
         }

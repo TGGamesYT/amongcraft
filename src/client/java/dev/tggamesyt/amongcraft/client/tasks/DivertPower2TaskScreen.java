@@ -1,6 +1,8 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -47,7 +49,16 @@ public class DivertPower2TaskScreen extends TaskMinigameScreen {
     @Override
     protected void tickTask() {
         if (switched && knobProgress < 1f) {
-            knobProgress = Math.min(1f, knobProgress + 0.15f);
+            // Slide the knob over a few ticks.
+            knobProgress = Math.min(1f, knobProgress + 0.2f);
+            if (knobProgress >= 1f) {
+                // Knob finished sliding: complete the task.
+                if (client != null) {
+                    client.getSoundManager().play(PositionedSoundInstance.master(
+                            SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
+                }
+                completeTask();
+            }
         }
     }
 
@@ -110,7 +121,11 @@ public class DivertPower2TaskScreen extends TaskMinigameScreen {
                 && mouseX >= switchX && mouseX <= switchX + SWITCH_WIDTH
                 && mouseY >= switchY && mouseY <= switchY + SWITCH_HEIGHT) {
             switched = true;
-            completeTask();
+            // Knob now animates in tickTask; task completes when it finishes sliding.
+            if (client != null) {
+                client.getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
+            }
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

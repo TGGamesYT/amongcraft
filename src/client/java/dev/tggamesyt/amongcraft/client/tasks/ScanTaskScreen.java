@@ -1,6 +1,11 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -8,14 +13,15 @@ import java.util.Random;
 
 /**
  * Submit Scan minigame. No mouse interaction: a green scan line sweeps up and
- * down over a body silhouette while scan info lines reveal progressively over
- * ~12 seconds. When the scan finishes the task completes.
+ * down over the player's own 3D model while scan info lines reveal progressively
+ * over ~12 seconds. When the scan finishes the task completes.
  */
 public class ScanTaskScreen extends TaskMinigameScreen {
 
     /** Total scan duration: 12 seconds at 20 ticks/s. */
     private static final int SCAN_TICKS = 240;
     private int ticks = 0;
+    private boolean playedDone = false;
 
     // Scan window geometry.
     private int scanX, scanY, scanW, scanH;
@@ -45,12 +51,21 @@ public class ScanTaskScreen extends TaskMinigameScreen {
                 | ((30 + rng.nextInt(200)) << 16)
                 | ((30 + rng.nextInt(200)) << 8)
                 | (30 + rng.nextInt(200));
+
+        if (client != null) {
+            client.getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
+        }
     }
 
     @Override
     protected void tickTask() {
         ticks++;
         if (ticks >= SCAN_TICKS) {
+            if (client != null) {
+                client.getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
+            }
             completeTask();
         }
     }
@@ -61,9 +76,9 @@ public class ScanTaskScreen extends TaskMinigameScreen {
         context.fill(scanX - 3, scanY - 3, scanX + scanW + 3, scanY + scanH + 3, 0xFF00C070);
         context.fill(scanX, scanY, scanX + scanW, scanY + scanH, 0xFF050807);
 
-        drawSilhouette(context);
+        drawPlayerModel(context);
 
-        // Sweeping scan line (up/down ping-pong).
+        // Sweeping scan line (up/down ping-pong) drawn over the model.
         double phase = (ticks % 80) / 80.0; // 4-second sweep cycle
         double tri = phase < 0.5 ? phase * 2.0 : 2.0 - phase * 2.0;
         int lineY = scanY + 2 + (int) Math.round(tri * (scanH - 6));
@@ -87,7 +102,11 @@ public class ScanTaskScreen extends TaskMinigameScreen {
         boolean showOxygen = ticks >= 160;  // 8s
         boolean showColor = ticks >= 200;   // 10s
 
-        drawInfoLine(context, infoX, infoY + lineGap, "Subject:", "Crewmate", showName);
+        String subjectName = "Crewmate";
+        if (client != null && client.player != null) {
+            subjectName = client.player.getGameProfile().getName();
+        }
+        drawInfoLine(context, infoX, infoY + lineGap, "Subject:", subjectName, showName);
         drawInfoLine(context, infoX, infoY + lineGap * 2, "Health:", healthPct + "%", showHealth);
         drawInfoLine(context, infoX, infoY + lineGap * 3, "Oxygen:", oxygenPct + "%", showOxygen);
 
@@ -135,29 +154,63 @@ public class ScanTaskScreen extends TaskMinigameScreen {
         }
     }
 
-    /** Simple crewmate-style body silhouette built from rectangles. */
-    private void drawSilhouette(DrawContext context) {
-        int cx = scanX + scanW / 2;
-        int bodyColor = 0xFF1E3A4A;
-        int top = scanY + scanH / 2 - 70;
+    /**
+     * Renders the local player's actual 3D model inside the scan area, facing
+     * the screen. The player's rotation fields are temporarily overridden so the
+     * model faces forward, then restored afterwards.
+     */
+    private void drawPlayerModel(DrawContext context) {
+        if (client == null || client.player == null) {
+            return;
+        }
+        ClientPlayerEntity entity = client.player;
 
-        // Head.
-        int headW = 44, headH = 38;
-        context.fill(cx - headW / 2, top, cx + headW / 2, top + headH, bodyColor);
-        // Visor.
-        context.fill(cx - 6, top + 10, cx + headW / 2 + 6, top + 26, 0xFF3A6B86);
+        // Save the rotation state so the live entity is left untouched.
+        float savedBodyYaw = entity.bodyYaw;
+        float savedPrevBodyYaw = entity.prevBodyYaw;
+        float savedHeadYaw = entity.headYaw;
+        float savedPrevHeadYaw = entity.prevHeadYaw;
+        float savedYaw = entity.getYaw();
+        float savedPrevYaw = entity.prevYaw;
+        float savedPitch = entity.getPitch();
+        float savedPrevPitch = entity.prevPitch;
 
-        // Body.
-        int bodyW = 60, bodyH = 64;
-        int bodyTop = top + headH;
-        context.fill(cx - bodyW / 2, bodyTop, cx + bodyW / 2, bodyTop + bodyH, bodyColor);
+        // Face the model straight at the screen.
+        entity.bodyYaw = 180f;
+        entity.prevBodyYaw = 180f;
+        entity.headYaw = 180f;
+        entity.prevHeadYaw = 180f;
+        entity.setYaw(180f);
+        entity.prevYaw = 180f;
+        entity.setPitch(0f);
+        entity.prevPitch = 0f;
 
-        // Backpack.
-        context.fill(cx - bodyW / 2 - 12, bodyTop + 8, cx - bodyW / 2, bodyTop + 44, bodyColor);
+        int modelX = scanX + scanW / 2;
+        int modelY = scanY + scanH / 2 + scanH / 4;
+        int size = Math.max(30, scanH / 4);
 
-        // Legs.
-        int legTop = bodyTop + bodyH;
-        context.fill(cx - bodyW / 2, legTop, cx - 6, legTop + 22, bodyColor);
-        context.fill(cx + 6, legTop, cx + bodyW / 2, legTop + 22, bodyColor);
+        MatrixStack matrices = context.getMatrices();
+        matrices.push();
+        matrices.translate(modelX, modelY, 1050.0);
+        matrices.scale(size, -size, size);
+
+        EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
+        dispatcher.setRenderShadows(false);
+        dispatcher.render(entity, 0, 0, 0, 0f, 1.0f, matrices,
+                context.getVertexConsumers(), 15728880);
+        dispatcher.setRenderShadows(true);
+
+        matrices.pop();
+        context.draw();
+
+        // Restore the entity's rotation state.
+        entity.bodyYaw = savedBodyYaw;
+        entity.prevBodyYaw = savedPrevBodyYaw;
+        entity.headYaw = savedHeadYaw;
+        entity.prevHeadYaw = savedPrevHeadYaw;
+        entity.setYaw(savedYaw);
+        entity.prevYaw = savedPrevYaw;
+        entity.setPitch(savedPitch);
+        entity.prevPitch = savedPrevPitch;
     }
 }

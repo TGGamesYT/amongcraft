@@ -1,8 +1,12 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -10,6 +14,11 @@ import java.util.Random;
  * player presses "Start", an ~8s countdown runs, then one random tube turns red
  * and the rest blue. Selecting the red tube completes the task; selecting a blue
  * tube just resets back to the pre-Start state.
+ *
+ * <p>The countdown is persisted in a {@code static} map keyed by the task
+ * {@link BlockPos}: closing the screen (ESC) mid-countdown and reopening the
+ * same block resumes the countdown from where it left off rather than
+ * restarting. State for a block is cleared once that task is completed.</p>
  */
 public class InspectSampleTaskScreen extends TaskMinigameScreen {
 
@@ -21,11 +30,20 @@ public class InspectSampleTaskScreen extends TaskMinigameScreen {
     private static final int PHASE_COUNTDOWN = 1;
     private static final int PHASE_SELECT = 2;
 
+    /** Persisted per-block countdown state, so reopening resumes it. */
+    private static final class Progress {
+        int phase = PHASE_IDLE;
+        /** Remaining countdown ticks (only meaningful while PHASE_COUNTDOWN). */
+        int countdown = 0;
+        int redIndex = -1;
+    }
+
+    private static final Map<BlockPos, Progress> SAVED = new HashMap<>();
+
     private final Random random = new Random();
 
-    private int phase = PHASE_IDLE;
-    private int countdown = 0;
-    private int redIndex = -1;
+    /** Live view onto the persisted state for this task's block. */
+    private Progress progress;
 
     // Layout (computed in initTask).
     private int tubeW, tubeH, tubeGap, tubesY, firstTubeX;
@@ -55,15 +73,27 @@ public class InspectSampleTaskScreen extends TaskMinigameScreen {
         startH = 22;
         startX = centerX() - startW / 2;
         startY = btnsY + btnH + 12;
+
+        // Resume persisted progress for this block, or start fresh.
+        progress = SAVED.computeIfAbsent(taskPos.toImmutable(), p -> new Progress());
+    }
+
+    private void playSound(net.minecraft.sound.SoundEvent event, float pitch) {
+        if (client != null) {
+            client.getSoundManager().play(PositionedSoundInstance.master(event, pitch));
+        }
     }
 
     @Override
     protected void tickTask() {
-        if (phase == PHASE_COUNTDOWN) {
-            countdown--;
-            if (countdown <= 0) {
-                phase = PHASE_SELECT;
-                redIndex = random.nextInt(TUBE_COUNT);
+        if (progress.phase == PHASE_COUNTDOWN) {
+            // 20 ticks/sec — one decrement per tick keeps the ETA accurate.
+            progress.countdown--;
+            if (progress.countdown <= 0) {
+                progress.countdown = 0;
+                progress.phase = PHASE_SELECT;
+                progress.redIndex = random.nextInt(TUBE_COUNT);
+                playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
             }
         }
     }
@@ -73,17 +103,20 @@ public class InspectSampleTaskScreen extends TaskMinigameScreen {
     }
 
     private int btnX(int i) {
-        return firstTubeX + i * (btnW + tubeGap) + (btnW - btnW) / 2;
+        return firstTubeX + i * (btnW + tubeGap);
     }
 
     @Override
     protected void renderTask(DrawContext context, int mouseX, int mouseY, float delta) {
+        int phase = progress.phase;
+
         // Status text.
         String status;
         if (phase == PHASE_IDLE) {
             status = "Click \"Start\" to begin";
         } else if (phase == PHASE_COUNTDOWN) {
-            float secs = countdown / 20f;
+            // Round up so the label hits 0 exactly when the countdown ends.
+            float secs = Math.max(0, progress.countdown) / 20f;
             status = String.format("ETA: %.2fs", secs);
         } else {
             status = "Select the contaminated sample";
@@ -98,7 +131,7 @@ public class InspectSampleTaskScreen extends TaskMinigameScreen {
             int x2 = cx + tubeW / 2;
             int color;
             if (phase == PHASE_SELECT) {
-                color = (i == redIndex) ? 0xFFE03030 : 0xFF3060E0;
+                color = (i == progress.redIndex) ? 0xFFE03030 : 0xFF3060E0;
             } else {
                 color = 0xFFE8E8E8;
             }
@@ -135,25 +168,29 @@ public class InspectSampleTaskScreen extends TaskMinigameScreen {
         if (isFinished()) return super.mouseClicked(mouseX, mouseY, button);
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
-        if (phase == PHASE_IDLE) {
+        if (progress.phase == PHASE_IDLE) {
             if (mouseX >= startX && mouseX <= startX + startW
                     && mouseY >= startY && mouseY <= startY + startH) {
-                phase = PHASE_COUNTDOWN;
-                countdown = COUNTDOWN_TICKS;
+                progress.phase = PHASE_COUNTDOWN;
+                progress.countdown = COUNTDOWN_TICKS;
+                playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
                 return true;
             }
-        } else if (phase == PHASE_SELECT) {
+        } else if (progress.phase == PHASE_SELECT) {
             for (int i = 0; i < TUBE_COUNT; i++) {
                 int bx = btnX(i);
                 if (mouseX >= bx && mouseX <= bx + btnW
                         && mouseY >= btnsY && mouseY <= btnsY + btnH) {
-                    if (i == redIndex) {
+                    if (i == progress.redIndex) {
+                        SAVED.remove(taskPos.toImmutable());
+                        playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
                         completeTask();
                     } else {
                         // Wrong tube — reset to pre-Start state.
-                        phase = PHASE_IDLE;
-                        redIndex = -1;
-                        countdown = 0;
+                        progress.phase = PHASE_IDLE;
+                        progress.redIndex = -1;
+                        progress.countdown = 0;
+                        playSound(SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f);
                     }
                     return true;
                 }

@@ -1,6 +1,9 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -61,6 +64,8 @@ public class AlignEngineTaskScreen extends TaskMinigameScreen {
         if (inZone()) {
             inZoneTicks++;
             if (inZoneTicks >= WIN_TICKS) {
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
                 completeTask();
             }
         } else {
@@ -142,6 +147,8 @@ public class AlignEngineTaskScreen extends TaskMinigameScreen {
         if (isFinished() || button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (overHandle(mouseX, mouseY)) {
             dragging = true;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             return true;
         }
         // Clicking on the track jumps the handle there.
@@ -149,6 +156,8 @@ public class AlignEngineTaskScreen extends TaskMinigameScreen {
                 && mouseY >= trackTop && mouseY <= trackBottom) {
             setFromMouse(mouseY);
             dragging = true;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

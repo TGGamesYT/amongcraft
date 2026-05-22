@@ -1,10 +1,11 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -19,7 +20,7 @@ public class ClearAsteroidsTaskScreen extends TaskMinigameScreen {
     private static final int SPAWN_INTERVAL = 16; // ticks (~0.8s)
 
     private static final class Asteroid {
-        float x, y, r, speed;
+        float x, y, r, vx, vy;
     }
 
     private final Random random = new Random();
@@ -47,9 +48,14 @@ public class ClearAsteroidsTaskScreen extends TaskMinigameScreen {
     private void spawnAsteroid() {
         Asteroid a = new Asteroid();
         a.r = 10 + random.nextFloat() * 10;
-        a.x = areaX1 - a.r;
+        // Spawn somewhere inside the play area.
+        a.x = areaX1 + a.r + random.nextFloat() * (areaX2 - areaX1 - a.r * 2);
         a.y = areaY1 + a.r + random.nextFloat() * (areaY2 - areaY1 - a.r * 2);
-        a.speed = 1f + random.nextFloat() * 1.5f;
+        // Random 2D velocity: varied direction and speed.
+        float angle = random.nextFloat() * (float) (Math.PI * 2);
+        float speed = 1f + random.nextFloat() * 2f;
+        a.vx = (float) Math.cos(angle) * speed;
+        a.vy = (float) Math.sin(angle) * speed;
         asteroids.add(a);
     }
 
@@ -63,12 +69,23 @@ public class ClearAsteroidsTaskScreen extends TaskMinigameScreen {
             }
         }
 
-        Iterator<Asteroid> it = asteroids.iterator();
-        while (it.hasNext()) {
-            Asteroid a = it.next();
-            a.x += a.speed;
-            if (a.x - a.r > areaX2) {
-                it.remove();
+        for (Asteroid a : asteroids) {
+            a.x += a.vx;
+            a.y += a.vy;
+            // Bounce off the play-area edges.
+            if (a.x - a.r < areaX1) {
+                a.x = areaX1 + a.r;
+                a.vx = Math.abs(a.vx);
+            } else if (a.x + a.r > areaX2) {
+                a.x = areaX2 - a.r;
+                a.vx = -Math.abs(a.vx);
+            }
+            if (a.y - a.r < areaY1) {
+                a.y = areaY1 + a.r;
+                a.vy = Math.abs(a.vy);
+            } else if (a.y + a.r > areaY2) {
+                a.y = areaY2 - a.r;
+                a.vy = -Math.abs(a.vy);
             }
         }
     }
@@ -121,10 +138,23 @@ public class ClearAsteroidsTaskScreen extends TaskMinigameScreen {
                     asteroids.remove(i);
                     destroyed++;
                     if (destroyed >= TOTAL_TO_DESTROY) {
+                        if (client != null) {
+                            client.getSoundManager().play(PositionedSoundInstance.master(
+                                    SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
+                        }
                         completeTask();
+                    } else if (client != null) {
+                        client.getSoundManager().play(PositionedSoundInstance.master(
+                                SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
                     }
                     return true;
                 }
+            }
+            // Missed click inside the play area.
+            if (mouseX >= areaX1 && mouseX <= areaX2 && mouseY >= areaY1 && mouseY <= areaY2
+                    && client != null) {
+                client.getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f));
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);

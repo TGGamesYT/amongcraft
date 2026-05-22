@@ -1,6 +1,9 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.Random;
@@ -62,6 +65,8 @@ public class ChuteTaskScreen extends TaskMinigameScreen {
                 trashY[i] += 6f;
             }
             if (openTimer >= 30) { // ~1.5s
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
                 completeTask();
             }
         }
@@ -113,6 +118,8 @@ public class ChuteTaskScreen extends TaskMinigameScreen {
                 && mouseY >= handleY && mouseY <= handleY + HANDLE_H) {
             dragging = true;
             dragOffset = mouseY - handleY;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -137,6 +144,8 @@ public class ChuteTaskScreen extends TaskMinigameScreen {
                 openTimer = 0;
             } else {
                 handleY = trackY; // spring back
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f));
             }
             return true;
         }

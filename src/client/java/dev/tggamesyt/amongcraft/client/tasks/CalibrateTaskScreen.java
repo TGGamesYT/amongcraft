@@ -1,6 +1,9 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.Random;
@@ -109,13 +112,19 @@ public class CalibrateTaskScreen extends TaskMinigameScreen {
         if (aligned(angle[current])) {
             done[current] = true;
             current++;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             if (current >= 3) {
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
                 completeTask();
             }
         } else {
             // wrong: reset
             for (int i = 0; i < 3; i++) done[i] = false;
             current = 0;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f));
         }
         return true;
     }

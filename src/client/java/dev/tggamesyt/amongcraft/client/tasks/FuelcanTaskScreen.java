@@ -1,6 +1,8 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -50,6 +52,10 @@ public class FuelcanTaskScreen extends TaskMinigameScreen {
         if (holding) {
             fuel = Math.min(100.0, fuel + FILL_PER_TICK);
             if (fuel >= 100.0) {
+                if (client != null) {
+                    client.getSoundManager().play(PositionedSoundInstance.master(
+                            SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
+                }
                 completeTask();
             }
         }
@@ -71,7 +77,7 @@ public class FuelcanTaskScreen extends TaskMinigameScreen {
         // Percentage label centred on the tank.
         context.drawCenteredTextWithShadow(textRenderer,
                 Text.literal((int) Math.round(fuel) + "%"),
-                centerX(), tankY + tankH / 2 - 4, 0xFF101418);
+                centerX(), tankY + tankH / 2 - 4, 0xFFFFFFFF);
 
         // Hold-to-fill button.
         boolean over = overButton(mouseX, mouseY);
@@ -90,6 +96,10 @@ public class FuelcanTaskScreen extends TaskMinigameScreen {
         if (isFinished() || button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (overButton(mouseX, mouseY)) {
             holding = true;
+            if (client != null) {
+                client.getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
+            }
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

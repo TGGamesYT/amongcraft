@@ -1,6 +1,8 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
@@ -10,7 +12,9 @@ import java.util.Random;
 
 /**
  * Connect Wires minigame. Three colored nodes on the left, three on the right.
- * Click a left node then the same-colored right node to connect them.
+ * Press the mouse on a left node to grab a wire — it follows the cursor while
+ * the button is held. Release over a same-colored right node to connect them;
+ * release anywhere else and the wire snaps away.
  */
 public class WireTaskScreen extends TaskMinigameScreen {
 
@@ -32,7 +36,10 @@ public class WireTaskScreen extends TaskMinigameScreen {
     /** rightIndex connected to each leftIndex, or -1. */
     private int[] connected;
 
-    private int selectedLeft = -1;
+    /** Left node currently being dragged from, or -1 when idle. */
+    private int draggingLeft = -1;
+    /** Live cursor position while dragging a wire. */
+    private double dragX, dragY;
     private int connections = 0;
 
     public WireTaskScreen(String taskId, BlockPos pos) {
@@ -64,6 +71,12 @@ public class WireTaskScreen extends TaskMinigameScreen {
         connected = new int[]{ -1, -1, -1 };
     }
 
+    private void playSound(net.minecraft.sound.SoundEvent event, float pitch) {
+        if (client != null) {
+            client.getSoundManager().play(PositionedSoundInstance.master(event, pitch));
+        }
+    }
+
     private int nodeX(boolean left) {
         return left ? panelX + 30 : panelX + panelWidth - 30 - NODE;
     }
@@ -87,17 +100,20 @@ public class WireTaskScreen extends TaskMinigameScreen {
             }
         }
 
-        // preview wire to mouse
-        if (selectedLeft >= 0 && !isFinished()) {
+        // live wire following the cursor while held
+        if (draggingLeft >= 0 && !isFinished()) {
             int x1 = nodeX(true) + NODE / 2;
-            int y1 = nodeY(selectedLeft) + NODE / 2;
-            drawThickLine(context, x1, y1, mouseX, mouseY, leftColors[selectedLeft], 5);
+            int y1 = nodeY(draggingLeft) + NODE / 2;
+            drawThickLine(context, x1, y1, (int) Math.round(dragX), (int) Math.round(dragY),
+                    leftColors[draggingLeft], 5);
         }
 
         // nodes
         for (int i = 0; i < 3; i++) {
-            drawNode(context, nodeX(true), nodeY(i), leftColors[i], leftUsed[i], selectedLeft == i);
-            drawNode(context, nodeX(false), nodeY(i), rightColors[i], rightUsed[i], false);
+            drawNode(context, nodeX(true), nodeY(i), leftColors[i], leftUsed[i], draggingLeft == i);
+            boolean rightHighlight = draggingLeft >= 0 && !rightUsed[i]
+                    && leftColors[draggingLeft] == rightColors[i];
+            drawNode(context, nodeX(false), nodeY(i), rightColors[i], rightUsed[i], rightHighlight);
         }
     }
 
@@ -142,24 +158,49 @@ public class WireTaskScreen extends TaskMinigameScreen {
 
         int l = hitNode(mouseX, mouseY, true);
         if (l >= 0 && !leftUsed[l]) {
-            selectedLeft = l;
-            return true;
-        }
-
-        int r = hitNode(mouseX, mouseY, false);
-        if (r >= 0 && !rightUsed[r] && selectedLeft >= 0) {
-            if (leftColors[selectedLeft] == rightColors[r]) {
-                connected[selectedLeft] = r;
-                leftUsed[selectedLeft] = true;
-                rightUsed[r] = true;
-                connections++;
-                if (connections == 3) {
-                    completeTask();
-                }
-            }
-            selectedLeft = -1;
+            draggingLeft = l;
+            dragX = mouseX;
+            dragY = mouseY;
+            playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f);
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+        if (isFinished() || draggingLeft < 0) {
+            return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+        }
+        dragX = mouseX;
+        dragY = mouseY;
+        return true;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (isFinished() || button != 0 || draggingLeft < 0) {
+            return super.mouseReleased(mouseX, mouseY, button);
+        }
+        int l = draggingLeft;
+        draggingLeft = -1;
+
+        int r = hitNode(mouseX, mouseY, false);
+        if (r >= 0 && !rightUsed[r] && leftColors[l] == rightColors[r]) {
+            connected[l] = r;
+            leftUsed[l] = true;
+            rightUsed[r] = true;
+            connections++;
+            if (connections == 3) {
+                playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
+                completeTask();
+            } else {
+                playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f);
+            }
+        } else {
+            // Wrong target (or none) — the wire snaps away, no connection.
+            playSound(SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f);
+        }
+        return true;
     }
 }

@@ -1,16 +1,14 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 /**
- * Unlock Manifolds — 10 buttons in a 5x2 grid showing shuffled numbers 1-10.
- * Click them in ascending order. A wrong click reshuffles. Click all 10 in
- * order to win.
+ * Unlock Manifolds — 10 buttons in a 5x2 grid showing the numbers 1-10 in
+ * plain order. Click them in ascending order. A wrong click resets progress.
+ * Click all 10 in order to win.
  */
 public class UnlockManifoldsTaskScreen extends TaskMinigameScreen {
 
@@ -36,17 +34,9 @@ public class UnlockManifoldsTaskScreen extends TaskMinigameScreen {
         int gridH = ROWS * CELL + (ROWS - 1) * GAP;
         gridX = centerX() - gridW / 2;
         gridY = contentTop() + 22 + ((panelY + panelHeight - (contentTop() + 22)) - gridH) / 2;
-        shuffle();
-    }
-
-    private void shuffle() {
-        List<Integer> nums = new ArrayList<>();
-        for (int i = 1; i <= COLS * ROWS; i++) {
-            nums.add(i);
-        }
-        Collections.shuffle(nums);
+        // Numbers are displayed in plain ascending order (not shuffled).
         for (int i = 0; i < numbers.length; i++) {
-            numbers[i] = nums.get(i);
+            numbers[i] = i + 1;
         }
     }
 
@@ -105,12 +95,22 @@ public class UnlockManifoldsTaskScreen extends TaskMinigameScreen {
                     if (numbers[i] == nextNumber) {
                         nextNumber++;
                         if (nextNumber > COLS * ROWS) {
+                            if (client != null) {
+                                client.getSoundManager().play(PositionedSoundInstance.master(
+                                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
+                            }
                             completeTask();
+                        } else if (client != null) {
+                            client.getSoundManager().play(PositionedSoundInstance.master(
+                                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
                         }
                     } else {
-                        // wrong: reset
+                        // wrong: reset progress
                         nextNumber = 1;
-                        shuffle();
+                        if (client != null) {
+                            client.getSoundManager().play(PositionedSoundInstance.master(
+                                    SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), 0.8f));
+                        }
                     }
                     return true;
                 }

@@ -1,6 +1,9 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -126,7 +129,11 @@ public class ChartCourseTaskScreen extends TaskMinigameScreen {
             shipY = py[currentIndex];
             visited[currentIndex] = true;
             currentIndex++;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             if (currentIndex >= POINT_COUNT) {
+                MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                        SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.5f));
                 completeTask();
             }
         }
@@ -139,6 +146,8 @@ public class ChartCourseTaskScreen extends TaskMinigameScreen {
         double dy = mouseY - shipY;
         if (Math.sqrt(dx * dx + dy * dy) <= SHIP_RADIUS + 3) {
             dragging = true;
+            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(
+                    SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

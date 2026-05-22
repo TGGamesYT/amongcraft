@@ -1,6 +1,8 @@
 package dev.tggamesyt.amongcraft.client.tasks;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -49,14 +51,14 @@ public class StabilizeSteeringTaskScreen extends TaskMinigameScreen {
                 net.minecraft.text.Text.literal("Drag the point onto the crosshair center"),
                 centerX(), contentTop() + 4, 0xFFCCE6FF);
 
-        // Filled circle background.
-        fillCircle(context, cx, cy, innerRadius, 0xFF1A3A5A);
+        // Filled circle background, drawn as horizontal scanlines (O(r), not O(r^2)).
+        fillCircleScanlines(context, cx, cy, innerRadius, 0xFF1A3A5A);
 
-        // Outer + inner circle outlines.
-        drawCircleOutline(context, cx, cy, outerRadius, 0xFF005F99, 3);
-        drawCircleOutline(context, cx, cy, innerRadius, 0xFF007ACC, 2);
+        // Outer + inner circle outlines, drawn as trig-computed point rings.
+        drawCircleRing(context, cx, cy, outerRadius, 0xFF005F99, 3);
+        drawCircleRing(context, cx, cy, innerRadius, 0xFF007ACC, 2);
 
-        // Faint dashed grid inside the circle.
+        // Faint grid inside the circle (a few straight lines).
         drawGrid(context);
 
         // Bold crosshair axes through center.
@@ -72,9 +74,39 @@ public class StabilizeSteeringTaskScreen extends TaskMinigameScreen {
         drawClippedHLine(context, pointY, 0xFFFFFFFF);
         drawClippedVLine(context, pointX, 0xFFFFFFFF);
 
-        // The draggable point.
-        fillCircle(context, pointX, pointY, POINT_R, locked ? 0xFF55DD55 : 0xFF004080);
-        drawCircleOutline(context, pointX, pointY, POINT_R, 0xFFFFFFFF, 1);
+        // The draggable point (small radius, cheap to fill).
+        fillCircleScanlines(context, pointX, pointY, POINT_R, locked ? 0xFF55DD55 : 0xFF004080);
+        drawCircleRing(context, pointX, pointY, POINT_R, 0xFFFFFFFF, 1);
+    }
+
+    /** Fills a disc using one horizontal {@code fill} per row — O(r) fills. */
+    private void fillCircleScanlines(DrawContext context, float ccx, float ccy, float r, int color) {
+        int rr = (int) Math.ceil(r);
+        float r2 = r * r;
+        for (int dy = -rr; dy <= rr; dy++) {
+            float fdy = dy;
+            if (fdy * fdy > r2) continue;
+            int half = (int) Math.sqrt(r2 - fdy * fdy);
+            int y = (int) ccy + dy;
+            context.fill((int) ccx - half, y, (int) ccx + half + 1, y + 1, color);
+        }
+    }
+
+    /**
+     * Draws a circle outline as a ring of ~120 trig-computed points (small
+     * squares of the given thickness), avoiding any per-pixel area scan.
+     */
+    private void drawCircleRing(DrawContext context, float ccx, float ccy, float r,
+                                int color, int thickness) {
+        int steps = 130;
+        int t = Math.max(1, thickness);
+        int half = t / 2;
+        for (int i = 0; i < steps; i++) {
+            double a = (Math.PI * 2 * i) / steps;
+            int px = (int) Math.round(ccx + Math.cos(a) * r);
+            int py = (int) Math.round(ccy + Math.sin(a) * r);
+            context.fill(px - half, py - half, px - half + t, py - half + t, color);
+        }
     }
 
     /** Draws a horizontal line clipped to the inner circle, at row y. */
