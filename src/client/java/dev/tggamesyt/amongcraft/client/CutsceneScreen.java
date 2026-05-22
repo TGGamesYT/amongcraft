@@ -175,11 +175,37 @@ public class CutsceneScreen extends Screen {
 
         dispatcher.setRenderShadows(false);
 
-        // Render with zero yaw and pitch so it faces front
-        float yaw = 0f;
-        float pitch = 0f;
+        // Force the entity to face the screen regardless of its in-world
+        // rotation (otherwise the model only looks right when the real
+        // player happens to be facing north).
+        float sBodyYaw = entity.bodyYaw;
+        float sPrevBodyYaw = entity.prevBodyYaw;
+        float sHeadYaw = entity.headYaw;
+        float sPrevHeadYaw = entity.prevHeadYaw;
+        float sYaw = entity.getYaw();
+        float sPrevYaw = entity.prevYaw;
+        float sPitch = entity.getPitch();
+        float sPrevPitch = entity.prevPitch;
+        entity.bodyYaw = 180f;
+        entity.prevBodyYaw = 180f;
+        entity.headYaw = 180f;
+        entity.prevHeadYaw = 180f;
+        entity.setYaw(180f);
+        entity.prevYaw = 180f;
+        entity.setPitch(0f);
+        entity.prevPitch = 0f;
 
-        dispatcher.render(entity, 0, 0, 0, yaw, 1.0F, matrices, context.getVertexConsumers(), 15728880);
+        dispatcher.render(entity, 0, 0, 0, 0f, 1.0F, matrices, context.getVertexConsumers(), 15728880);
+
+        entity.bodyYaw = sBodyYaw;
+        entity.prevBodyYaw = sPrevBodyYaw;
+        entity.headYaw = sHeadYaw;
+        entity.prevHeadYaw = sPrevHeadYaw;
+        entity.setYaw(sYaw);
+        entity.prevYaw = sPrevYaw;
+        entity.setPitch(sPitch);
+        entity.prevPitch = sPrevPitch;
+
         dispatcher.setRenderShadows(true);
 
         matrices.pop();

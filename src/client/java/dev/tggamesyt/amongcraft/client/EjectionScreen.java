@@ -206,7 +206,37 @@ public class EjectionScreen extends Screen {
 
         EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
         dispatcher.setRenderShadows(false);
+
+        // Force the body to face the screen regardless of its world rotation;
+        // the spin comes purely from the matrix Z rotation above.
+        float sBodyYaw = entity.bodyYaw;
+        float sPrevBodyYaw = entity.prevBodyYaw;
+        float sHeadYaw = entity.headYaw;
+        float sPrevHeadYaw = entity.prevHeadYaw;
+        float sYaw = entity.getYaw();
+        float sPrevYaw = entity.prevYaw;
+        float sPitch = entity.getPitch();
+        float sPrevPitch = entity.prevPitch;
+        entity.bodyYaw = 180f;
+        entity.prevBodyYaw = 180f;
+        entity.headYaw = 180f;
+        entity.prevHeadYaw = 180f;
+        entity.setYaw(180f);
+        entity.prevYaw = 180f;
+        entity.setPitch(0f);
+        entity.prevPitch = 0f;
+
         dispatcher.render(entity, 0, 0, 0, 0f, 1.0f, matrices, context.getVertexConsumers(), 15728880);
+
+        entity.bodyYaw = sBodyYaw;
+        entity.prevBodyYaw = sPrevBodyYaw;
+        entity.headYaw = sHeadYaw;
+        entity.prevHeadYaw = sPrevHeadYaw;
+        entity.setYaw(sYaw);
+        entity.prevYaw = sPrevYaw;
+        entity.setPitch(sPitch);
+        entity.prevPitch = sPrevPitch;
+
         dispatcher.setRenderShadows(true);
 
         matrices.pop();
