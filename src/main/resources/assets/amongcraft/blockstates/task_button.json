@@ -5,6 +5,11 @@
     "task=default,facing=west":  { "model": "amongcraft:block/task_button", "y": 0 },
     "task=default,facing=east":  { "model": "amongcraft:block/task_button", "y": 0 },
 
+    "task=clean_vent,facing=north": { "model": "amongcraft:block/clean_vent", "y": 0 },
+    "task=clean_vent,facing=south": { "model": "amongcraft:block/clean_vent", "y": 0 },
+    "task=clean_vent,facing=west":  { "model": "amongcraft:block/clean_vent", "y": 0 },
+    "task=clean_vent,facing=east":  { "model": "amongcraft:block/clean_vent", "y": 0 },
+
     "task=upload,facing=north": { "model": "amongcraft:block/upload", "y": 180 },
     "task=upload,facing=south": { "model": "amongcraft:block/upload", "y": 0 },
     "task=upload,facing=west":  { "model": "amongcraft:block/upload", "y": 90 },
