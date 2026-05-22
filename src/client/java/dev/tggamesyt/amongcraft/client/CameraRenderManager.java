@@ -99,7 +99,7 @@ public class CameraRenderManager {
         private final SimpleFramebuffer framebuffer;
         private final BlockPos pos;
         private final NativeImageBackedTexture dynamicTexture;
-        private static Identifier textureId = null;
+        private Identifier textureId = null;
 
         public CameraEntry(BlockPos pos) {
             this.pos = pos;
@@ -113,7 +113,7 @@ public class CameraRenderManager {
                     .registerDynamicTexture("camera_" + pos.toShortString(), dynamicTexture);
         }
 
-        public static Identifier getTexture() {
+        public Identifier getTexture() {
             return textureId;
         }
 
